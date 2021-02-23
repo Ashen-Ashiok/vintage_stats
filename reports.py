@@ -1,10 +1,13 @@
-from constants import *
-from data_processing import cached_opendota_request, check_victory
 import logging
-from player import WLRecord
+import itertools
+from datetime import datetime
+from constants import *
+from data_processing import cached_opendota_request, check_victory, get_stack_wl
+from utility import WLRecord
+from utility import get_patch_release_time
 
 
-def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=5):
+def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0):
     full_report = []
     for listed_player in players_list:
         cutoff_date = get_patch_release_time(patch)
@@ -12,12 +15,13 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=5):
         days_since_cutoff = int(seconds_since_cutoff/86400)
         logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date, days_since_cutoff))
 
-        response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(listed_player.player_id, days_since_cutoff)
+        response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
+            listed_player.player_id, days_since_cutoff)
 
         matches_response = cached_opendota_request(response_str)
 
         solo_wins = solo_losses = party_wins = party_losses = 0
-        hero_pool = []
+        hero_pool = {}
         for match in matches_response.json():
             match_datetime = datetime.fromtimestamp(match['start_time'])
 
@@ -25,7 +29,9 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=5):
                 continue
             player_won = check_victory(match)
             if match['hero_id'] not in hero_pool:
-                hero_pool.append(match['hero_id'])
+                hero_pool[match['hero_id']] = 1
+            else:
+                hero_pool[match['hero_id']] = hero_pool[match['hero_id']] + 1
 
             if player_won:
                 if not match['party_size']:
@@ -47,12 +53,34 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=5):
         solo_record = WLRecord(solo_wins, solo_losses)
         party_record = WLRecord(party_wins, party_losses)
 
+        hero_count = 0
+        for hero in hero_pool:
+            if hero_pool[hero] > threshold:
+                hero_count = hero_count + 1
+
         player_record = {'nick': listed_player.nick,
                          'total': solo_record + party_record,
                          'solo': solo_record,
                          'party': party_record,
-                         'hero_count': len(hero_pool)
+                         'hero_count': hero_count
                          }
         full_report.append(player_record)
 
+    return full_report
+
+
+def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B):
+    all_possible_stacks = itertools.combinations(player_pool.get_player_list(), player_count)
+
+    full_report = []
+    for stack in all_possible_stacks:
+        stack_record = get_stack_wl(stack, exclusive, player_pool, patch)
+        sorted_stack_nicknames = sorted(player.nick for player in stack)
+        stack_name = ''
+        for index, nick in enumerate(sorted_stack_nicknames):
+            if index == 0:
+                stack_name += nick
+            else:
+                stack_name += ', ' + nick
+        full_report.append({"stack_name": stack_name, "stack_record": stack_record})
     return full_report
