@@ -3,8 +3,10 @@ from vintage_stats import player_pool
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
     PATCH_ID_7_28A, PATCH_ID_7_28B, PATCH_ID_7_28C
 
-from vintage_stats.data_processing import get_requests_count, get_stack_wl
+from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
+
+from vintage_stats.utility import get_last_monday
 
 vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
@@ -17,29 +19,38 @@ vintage = player_pool.PlayerPool(vintage_player_map)
 for player in vintage:
     print(player)
 
-winrate_report_flag = False
+winrate_report_flag = True
 if winrate_report_flag:
     hero_count_threshold = 3
-    basic_28b_winrate_report = generate_winrate_report(vintage, threshold=hero_count_threshold)
+    # basic_28b_winrate_report = generate_winrate_report(vintage, threshold=hero_count_threshold)
+    last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=3,
+                                                       _cutoff_date=get_last_monday())
 
-    print('Solo/party winrate report of 7.28b ranked')
-    print('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}({}+)'.format('Nickname', 'TW', 'TL', 'SW', 'SL', 'PW', 'PL', 'S%', 'HP',
-                                                           hero_count_threshold))
-    for player_report in basic_28b_winrate_report:
-        solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count()
-        hero_count = player_report['hero_count']
-        print('{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:.2f}\t{}'.format(
-            player_report['nick'], player_report['total'].wins, player_report['total'].losses,
-            player_report['solo'].wins, player_report['solo'].losses, player_report['party'].wins,
-            player_report['party'].losses,
-            solo_percentage, hero_count)
+    print('Solo/party winrate report of last monday ranked')
+    print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
+          '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(hero_count_threshold))
+    for player_report in last_week_winrate_report:
+        try:
+            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count()
+        except ZeroDivisionError:
+            solo_percentage = 1
+        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{} ({}–{}, {:.2f})\t{}\t{}\t{}\t{}'.format(
+            player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
+            player_report['party'].wins, player_report['party'].losses, solo_percentage,
+            get_hero_name(player_report['best_hero_id']), player_report['best_hero_record'].wins, player_report['best_hero_record'].losses,
+            player_report['best_hero_record'].get_winrate(), player_report['hero_count'], player_report['hero_count_more'],
+            player_report['hero_more_record'].wins, player_report['hero_more_record'].losses)
         )
+exit()
+fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
+                                             vintage.get_player('Shifty')),
+                                            exclusive=False, patch=PATCH_ID_7_28B)
+print(fazy_shifty_28b_stack_record)
 
 fazy_keskoo_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                              vintage.get_player('Keskoo')),
                                             exclusive=True, excluded_players=vintage, patch=PATCH_ID_7_28B)
 print(fazy_keskoo_28b_stack_record)
-
 
 all_duo_stacks_report = get_all_stacks_report(vintage, 2, True)
 all_triple_stacks_report = get_all_stacks_report(vintage, 3, True)
