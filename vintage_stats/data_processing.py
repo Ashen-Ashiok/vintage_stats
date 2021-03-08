@@ -76,7 +76,10 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
     if len(players_list) <= 1:
         logging.debug('Stack needs to have at least 2 members.')
         return None
-    excluded_players_copy = excluded_players.get_player_list().copy()
+    if excluded_players is not None:
+        excluded_players_copy = excluded_players.get_player_list().copy()
+    else:
+        excluded_players_copy = None
     if exclusive:
         for player in players_list:
             excluded_players_copy.remove(player)

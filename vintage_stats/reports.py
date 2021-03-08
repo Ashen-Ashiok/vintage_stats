@@ -7,10 +7,12 @@ from vintage_stats.utility import WLRecord
 from vintage_stats.utility import get_patch_release_time
 
 
-def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0):
+def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0, _cutoff_date=None):
     full_report = []
     for listed_player in players_list:
         cutoff_date = get_patch_release_time(patch)
+        if _cutoff_date is not None:
+            cutoff_date = _cutoff_date
         seconds_since_cutoff = (datetime.now() - cutoff_date).total_seconds()
         days_since_cutoff = int(seconds_since_cutoff/86400)
         logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date, days_since_cutoff))
@@ -29,9 +31,12 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0):
                 continue
             player_won = check_victory(match)
             if match['hero_id'] not in hero_pool:
-                hero_pool[match['hero_id']] = 1
+                if player_won:
+                    hero_pool[match['hero_id']] = WLRecord(1, 0)
+                else:
+                    hero_pool[match['hero_id']] = WLRecord(0, 1)
             else:
-                hero_pool[match['hero_id']] = hero_pool[match['hero_id']] + 1
+                hero_pool[match['hero_id']].add_match(player_won)
 
             if player_won:
                 if not match['party_size']:
@@ -53,16 +58,30 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0):
         solo_record = WLRecord(solo_wins, solo_losses)
         party_record = WLRecord(party_wins, party_losses)
 
-        hero_count = 0
+        hero_count_once = 0
+        hero_count_more = 0
+        hero_more_total_record = WLRecord(0, 0)
+        best_hero_record = WLRecord(0, 0)
+        best_hero_id = -1
         for hero in hero_pool:
-            if hero_pool[hero] > threshold:
-                hero_count = hero_count + 1
+            if hero_pool[hero].get_record_goodness() > best_hero_record.get_record_goodness():
+                best_hero_record = hero_pool[hero]
+                best_hero_id = hero
+            if hero_pool[hero]:
+                hero_count_once = hero_count_once + 1
+            if hero_pool[hero].get_count() > threshold:
+                hero_count_more = hero_count_more + 1
+                hero_more_total_record += hero_pool[hero]
 
         player_record = {'nick': listed_player.nick,
                          'total': solo_record + party_record,
                          'solo': solo_record,
                          'party': party_record,
-                         'hero_count': hero_count
+                         'hero_count': hero_count_once,
+                         'hero_count_more': hero_count_more,
+                         'hero_more_record': hero_more_total_record,
+                         'best_hero_id': best_hero_id,
+                         'best_hero_record': best_hero_record
                          }
         full_report.append(player_record)
 
