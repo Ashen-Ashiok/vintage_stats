@@ -64,7 +64,7 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0, _cu
         best_hero_record = WLRecord(0, 0)
         best_hero_id = -1
         for hero in hero_pool:
-            if hero_pool[hero].get_record_goodness() > best_hero_record.get_record_goodness():
+            if hero_pool[hero].get_record_goodness() >= best_hero_record.get_record_goodness() or (best_hero_record.get_count() == 0):
                 best_hero_record = hero_pool[hero]
                 best_hero_id = hero
             if hero_pool[hero]:
