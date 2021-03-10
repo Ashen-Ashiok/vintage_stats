@@ -1,3 +1,4 @@
+import argparse
 from vintage_stats import player_pool
 
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
@@ -8,6 +9,15 @@ from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
 
 from vintage_stats.utility import get_last_monday
 
+parser = argparse.ArgumentParser(
+    description="""
+TODO VINTAGE STATS DESC""",
+    epilog="""Find more info and latest version on https://github.com/Ashen-Ashiok/vintage_stats""",
+    formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("-wwr", "--week-win-report", help="Print this week (since last Monday) winrates and other stats for Vintage", action="store_true")
+parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
+args = parser.parse_args()
+
 vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
                       {'pid': KESKOO_ID, 'nick': 'Keskoo'},
@@ -16,14 +26,9 @@ vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
 
 vintage = player_pool.PlayerPool(vintage_player_map)
 
-for player in vintage:
-    print(player)
-
-winrate_report_flag = True
-if winrate_report_flag:
-    hero_count_threshold = 3
-    # basic_28b_winrate_report = generate_winrate_report(vintage, threshold=hero_count_threshold)
-    last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=3,
+if args.week_win_report:
+    hero_count_threshold = 2
+    last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=hero_count_threshold,
                                                        _cutoff_date=get_last_monday())
 
     print('Solo/party winrate report of last monday ranked')
