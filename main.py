@@ -1,4 +1,6 @@
 import argparse
+import logging
+from datetime import datetime
 from vintage_stats import player_pool
 
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
@@ -15,6 +17,7 @@ TODO VINTAGE STATS DESC""",
     epilog="""Find more info and latest version on https://github.com/Ashen-Ashiok/vintage_stats""",
     formatter_class=argparse.RawDescriptionHelpFormatter)
 parser.add_argument("-wwr", "--week-win-report", help="Print this week (since last Monday) winrates and other stats for Vintage", action="store_true")
+parser.add_argument("-mrep", "--monthly-report", help="Print previous month (TODO) winrates and other stats for Vintage", action="store_true")
 parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
 args = parser.parse_args()
 
@@ -25,42 +28,72 @@ vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': WARELIC_ID, 'nick': 'Warelic'}]
 
 vintage = player_pool.PlayerPool(vintage_player_map)
+logging.basicConfig()
+logging.getLogger().setLevel(logging.ERROR)
 
 if args.week_win_report:
     hero_count_threshold = 2
     last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=hero_count_threshold,
-                                                       _cutoff_date=get_last_monday())
+                                                       _cutoff_date_from=get_last_monday())
 
     print('Solo/party winrate report of last monday ranked')
     print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
           '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(hero_count_threshold))
     for player_report in last_week_winrate_report:
         try:
-            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count()
+            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() *100
         except ZeroDivisionError:
-            solo_percentage = 1
-        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{} ({}–{}, {:.2f})\t{}\t{}\t{}\t{}'.format(
+            solo_percentage = 100
+        best_heroes = player_report['best_heroes']
+
+        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{} ({})\t{}\t{}\t{}\t{}'.format(
             player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
             player_report['party'].wins, player_report['party'].losses, solo_percentage,
-            get_hero_name(player_report['best_hero_id']), player_report['best_hero_record'].wins, player_report['best_hero_record'].losses,
-            player_report['best_hero_record'].get_winrate(), player_report['hero_count'], player_report['hero_count_more'],
+            get_hero_name(best_heroes[0][0]), best_heroes[0][1],
+            player_report['hero_count'], player_report['hero_count_more'],
             player_report['hero_more_record'].wins, player_report['hero_more_record'].losses)
         )
-exit()
-fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
-                                             vintage.get_player('Shifty')),
-                                            exclusive=False, patch=PATCH_ID_7_28B)
-print(fazy_shifty_28b_stack_record)
 
-fazy_keskoo_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
-                                             vintage.get_player('Keskoo')),
-                                            exclusive=True, excluded_players=vintage, patch=PATCH_ID_7_28B)
-print(fazy_keskoo_28b_stack_record)
+if args.monthly_report:
+    hero_count_threshold = 3
+    last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=hero_count_threshold,
+                                                       _cutoff_date_from=datetime(2021, 1, 1, 0, 0, 0), _cutoff_date_to=datetime(2021, 2, 1, 0, 0, 0))
 
-all_duo_stacks_report = get_all_stacks_report(vintage, 2, True)
-all_triple_stacks_report = get_all_stacks_report(vintage, 3, True)
+    print('Solo/party winrate report of the last full month, ranked')
+    print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
+          '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(hero_count_threshold))
+    for player_report in last_week_winrate_report:
+        try:
+            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() *100
+        except ZeroDivisionError:
+            solo_percentage = 100
+        best_heroes = player_report['best_heroes']
 
-for stack in (all_duo_stacks_report + all_triple_stacks_report):
-    print('{} – {}'.format(stack['stack_name'], stack['stack_record']))
+        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{} ({}), {} ({}), {} ({})\t{}\t{}\t{}\t{}'.format(
+            player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
+            player_report['party'].wins, player_report['party'].losses, solo_percentage,
+            get_hero_name(best_heroes[0][0]), best_heroes[0][1],
+            get_hero_name(best_heroes[1][0]), best_heroes[1][1],
+            get_hero_name(best_heroes[2][0]), best_heroes[2][1],
+            player_report['hero_count'], player_report['hero_count_more'],
+            player_report['hero_more_record'].wins, player_report['hero_more_record'].losses)
+        )
+
+if args.testing_examples:
+    fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
+                                                 vintage.get_player('Shifty')),
+                                                exclusive=False, patch=PATCH_ID_7_28B)
+    print(fazy_shifty_28b_stack_record)
+
+    fazy_keskoo_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
+                                                 vintage.get_player('Keskoo')),
+                                                exclusive=True, excluded_players=vintage, patch=PATCH_ID_7_28B)
+    print(fazy_keskoo_28b_stack_record)
+
+    all_duo_stacks_report = get_all_stacks_report(vintage, 2, True)
+    all_triple_stacks_report = get_all_stacks_report(vintage, 3, True)
+
+    for stack in (all_duo_stacks_report + all_triple_stacks_report):
+        print('{} – {}'.format(stack['stack_name'], stack['stack_record']))
 
 print('Requests used: {}'.format(get_requests_count()))

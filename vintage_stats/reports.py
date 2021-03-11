@@ -7,16 +7,22 @@ from vintage_stats.utility import WLRecord
 from vintage_stats.utility import get_patch_release_time
 
 
-def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0, _cutoff_date=None):
+def generate_winrate_report(players_list, patch=PATCH_ID_7_28A, threshold=0, _cutoff_date_from=None, _cutoff_date_to=None):
     full_report = []
-    for listed_player in players_list:
-        cutoff_date = get_patch_release_time(patch)
-        if _cutoff_date is not None:
-            cutoff_date = _cutoff_date
-        seconds_since_cutoff = (datetime.now() - cutoff_date).total_seconds()
-        days_since_cutoff = int(seconds_since_cutoff/86400)
-        logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date, days_since_cutoff))
+    cutoff_date_from = get_patch_release_time(patch)
+    cutoff_date_to = datetime.now()
 
+    if _cutoff_date_from is not None:
+        cutoff_date_from = _cutoff_date_from
+
+    if _cutoff_date_to is not None:
+        cutoff_date_to = _cutoff_date_to
+
+    seconds_since_cutoff = (datetime.now() - cutoff_date_from).total_seconds()
+    days_since_cutoff = int(seconds_since_cutoff / 86400)
+    logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date_from, days_since_cutoff))
+
+    for listed_player in players_list:
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             listed_player.player_id, days_since_cutoff)
 
@@ -27,7 +33,7 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0, _cu
         for match in matches_response.json():
             match_datetime = datetime.fromtimestamp(match['start_time'])
 
-            if match_datetime < cutoff_date:
+            if match_datetime < cutoff_date_from or match_datetime > cutoff_date_to:
                 continue
             player_won = check_victory(match)
             if match['hero_id'] not in hero_pool:
@@ -63,10 +69,15 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0, _cu
         hero_more_total_record = WLRecord(0, 0)
         best_hero_record = WLRecord(0, 0)
         best_hero_id = -1
+
+        best_heroes_list = []
         for hero in hero_pool:
-            if hero_pool[hero].get_record_goodness() >= best_hero_record.get_record_goodness() or (best_hero_record.get_count() == 0):
-                best_hero_record = hero_pool[hero]
-                best_hero_id = hero
+            hero_id_record_tuple = (hero, hero_pool[hero])
+            best_heroes_list.append(hero_id_record_tuple)
+
+        best_heroes_list.sort(key=lambda x: x[1].get_record_goodness(), reverse=True)
+
+        for hero in hero_pool:
             if hero_pool[hero]:
                 hero_count_once = hero_count_once + 1
             if hero_pool[hero].get_count() > threshold:
@@ -80,8 +91,7 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0, _cu
                          'hero_count': hero_count_once,
                          'hero_count_more': hero_count_more,
                          'hero_more_record': hero_more_total_record,
-                         'best_hero_id': best_hero_id,
-                         'best_hero_record': best_hero_record
+                         'best_heroes': best_heroes_list
                          }
         full_report.append(player_record)
 
