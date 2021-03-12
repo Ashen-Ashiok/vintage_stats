@@ -16,6 +16,8 @@ parser.add_argument("-wwr", "--week-win-report", help="Print this week (since la
                     action="store_true")
 parser.add_argument("-monitor", "--monitor", help="",
                     action="store_true")
+parser.add_argument("-onlynew", "--only_new", help="",
+                    action="store_true")
 parser.add_argument("-mrep", "--monthly-report", help="Print previous month (TODO) winrates and other stats for Vintage",
                     action="store_true")
 parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
@@ -33,11 +35,16 @@ logging.getLogger().setLevel(logging.ERROR)
 
 if args.monitor:
     last_matches_map = get_last_matches_map(vintage)
+    post_only_new = False
+    if args.only_new:
+        post_only_new = True
     for player in last_matches_map:
         match_data = last_matches_map[player]
         result_string = 'WON' if match_data.player_won else 'LOST'
         solo_string = 'party' if match_data.party_size > 1 else 'solo'
         time_string = datetime.fromtimestamp(match_data.start_time).strftime('%a %dth %H:%M')
+        if not match_data.is_new:
+            continue
         new_string = 'NEW\t' if match_data.is_new else 'OLD\t'
         print('{}{} played {} game (ID {}) as {}, {}-{}-{} and {}. Played on {}'.format(new_string, player, solo_string, match_data.match_ID,
                                                                                         match_data.hero_name, match_data.kills,
