@@ -1,6 +1,7 @@
 import argparse
 import logging
 from datetime import datetime
+import timeago
 
 from vintage_stats import player_pool
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
@@ -42,14 +43,16 @@ if args.monitor:
         match_data = last_matches_map[player]
         result_string = 'WON' if match_data.player_won else 'LOST'
         solo_string = 'party' if match_data.party_size > 1 else 'solo'
-        time_string = datetime.fromtimestamp(match_data.start_time).strftime('%a %dth %H:%M')
+        time_played = datetime.fromtimestamp(match_data.start_time)
+        time_string = time_played.strftime('%a %H:%M')
+        time_ago_string = timeago.format(time_played, datetime.now())
         if not match_data.is_new and post_only_new:
             continue
-        new_string = 'NEW\t' if match_data.is_new else 'OLD\t'
-        print('{}{} played {} game (ID {}) as {}, {}-{}-{} and {}. Played on {}'.format(new_string, player, solo_string, match_data.match_ID,
-                                                                                        match_data.hero_name, match_data.kills,
-                                                                                        match_data.deaths, match_data.assists,
-                                                                                        result_string, time_string))
+        new_string = '** NEW!**' if match_data.is_new else ''
+        print('**{}** played {} game (ID {}) as **{}**, {}-{}-{} and **{}**, {} {}'.format(player, solo_string, match_data.match_ID,
+                                                                                           match_data.hero_name, match_data.kills,
+                                                                                           match_data.deaths, match_data.assists,
+                                                                                           result_string, time_ago_string, new_string))
 
 if args.week_win_report:
     hero_count_threshold = 2
