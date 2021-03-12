@@ -95,7 +95,7 @@ def log_requests_count():
     request_log_path = Path("request.log")
     if not request_log_path.exists():
         with open('request.log', 'w') as request_log:
-            request_log.write(0)
+            request_log.write('0')
     requests_used_today = 0
     with open('request.log', 'r+') as request_log:
         for line in request_log:
