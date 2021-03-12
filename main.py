@@ -5,7 +5,7 @@ from datetime import datetime
 from vintage_stats import player_pool
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
     PATCH_ID_7_28B, PATCH_ID_7_28C
-from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name, get_last_matches_map
+from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name, get_last_matches_map, log_requests_count
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
 from vintage_stats.utility import get_last_monday
 
@@ -120,4 +120,4 @@ if args.testing_examples:
     for stack in (all_duo_stacks_report + all_triple_stacks_report):
         print('{} – {}'.format(stack['stack_name'], stack['stack_record']))
 
-print('Requests used: {}'.format(get_requests_count()))
+log_requests_count()
