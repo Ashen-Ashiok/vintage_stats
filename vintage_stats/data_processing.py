@@ -91,6 +91,19 @@ def get_requests_count():
     return requests_count
 
 
+def log_requests_count():
+    request_log_path = Path("request.log")
+    if not request_log_path.exists():
+        with open('request.log', 'w') as request_log:
+            request_log.write(0)
+    requests_used_today = 0
+    with open('request.log', 'r+') as request_log:
+        for line in request_log:
+            requests_used_today = int(line)
+    with open('request.log', 'w') as request_log:
+        request_log.write('{}'.format(get_requests_count() + requests_used_today))
+
+
 def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PATCH_ID_7_28B):
     """Assumes players on players_list are on the same team. Removes players in player_list from excluded_players"""
     if len(players_list) <= 1:
