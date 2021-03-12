@@ -1,11 +1,13 @@
 import json
 import logging
 from collections import namedtuple
+from pathlib import Path
 
 import requests
-from pathlib import Path
+
+from vintage_stats.constants import PATCH_ID_7_28B
 from vintage_stats.utility import get_patch_release_time, get_days_since_date, WLRecord
-from vintage_stats.constants import PATCH_ID_7_28A, PATCH_ID_7_28B, PATCH_ID_7_28C
+
 logging.basicConfig(level=logging.ERROR)
 requests_count = 0
 response_cache = {}
@@ -172,6 +174,7 @@ def get_last_matches_map(players_list):
             current_match_ID = last_matches_map[player].match_ID
             previous_match_ID = last_matches_map_old[player].match_ID
             if current_match_ID == previous_match_ID:
-                last_matches_map[player].is_new = False
+                last_matches_map[listed_player_nick] = match_data
+                last_matches_map[player] = last_matches_map[player]._replace(is_new=False)
 
     return last_matches_map

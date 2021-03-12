@@ -1,14 +1,12 @@
 import argparse
 import logging
 from datetime import datetime
+
 from vintage_stats import player_pool
-
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
-    PATCH_ID_7_28A, PATCH_ID_7_28B, PATCH_ID_7_28C
-
+    PATCH_ID_7_28B, PATCH_ID_7_28C
 from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name, get_last_matches_map
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
-
 from vintage_stats.utility import get_last_monday
 
 parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
@@ -40,7 +38,7 @@ if args.monitor:
         result_string = 'WON' if match_data.player_won else 'LOST'
         solo_string = 'party' if match_data.party_size > 1 else 'solo'
         time_string = datetime.fromtimestamp(match_data.start_time).strftime('%a %dth %H:%M')
-        new_string = 'NEW: ' if match_data.is_new else ''
+        new_string = 'NEW\t' if match_data.is_new else 'OLD\t'
         print('{}{} played {} game (ID {}) as {}, {}-{}-{} and {}. Played on {}'.format(new_string, player, solo_string, match_data.match_ID,
                                                                                         match_data.hero_name, match_data.kills,
                                                                                         match_data.deaths, match_data.assists,
