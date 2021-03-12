@@ -43,7 +43,7 @@ if args.monitor:
         result_string = 'WON' if match_data.player_won else 'LOST'
         solo_string = 'party' if match_data.party_size > 1 else 'solo'
         time_string = datetime.fromtimestamp(match_data.start_time).strftime('%a %dth %H:%M')
-        if not match_data.is_new:
+        if not match_data.is_new and post_only_new:
             continue
         new_string = 'NEW\t' if match_data.is_new else 'OLD\t'
         print('{}{} played {} game (ID {}) as {}, {}-{}-{} and {}. Played on {}'.format(new_string, player, solo_string, match_data.match_ID,
