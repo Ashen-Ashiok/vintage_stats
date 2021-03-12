@@ -39,6 +39,23 @@ def check_victory(player_match_data):
     return player_won
 
 
+def get_file_cached_player_stats(player_id):
+    data_folder_path = Path('.', 'data', 'players')
+    data_folder_path.mkdir(parents=True, exist_ok=True)
+    players_stats_path = Path(data_folder_path, str(player_id) + '_data.json')
+
+    if Path.is_file(players_stats_path):
+        with open(players_stats_path) as match_file:
+            data = json.load(match_file)
+            response_cache['https://api.opendota.com/api/players/{}'.format(player_id)] = data
+            return data
+    else:
+        data = cached_opendota_request('https://api.opendota.com/api/players/{}'.format(player_id)).json()
+        dump_file = open(players_stats_path, 'w')
+        json.dump(data, dump_file)
+        return data
+
+
 def get_file_cached_match_stats(match_id):
     data_folder_path = Path('.', 'data', 'matches')
     data_folder_path.mkdir(parents=True, exist_ok=True)
