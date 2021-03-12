@@ -1,5 +1,6 @@
 import argparse
 import logging
+import pickle
 from datetime import datetime
 from vintage_stats import player_pool
 
@@ -11,13 +12,15 @@ from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
 
 from vintage_stats.utility import get_last_monday
 
-parser = argparse.ArgumentParser(
-    description="""
-TODO VINTAGE STATS DESC""",
-    epilog="""Find more info and latest version on https://github.com/Ashen-Ashiok/vintage_stats""",
-    formatter_class=argparse.RawDescriptionHelpFormatter)
-parser.add_argument("-wwr", "--week-win-report", help="Print this week (since last Monday) winrates and other stats for Vintage", action="store_true")
-parser.add_argument("-mrep", "--monthly-report", help="Print previous month (TODO) winrates and other stats for Vintage", action="store_true")
+parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
+                                 epilog='Find more info and latest version on https://github.com/Ashen-Ashiok/vintage_stats')
+
+parser.add_argument("-wwr", "--week-win-report", help="Print this week (since last Monday) winrates and other stats for Vintage",
+                    action="store_true")
+parser.add_argument("-monitor", "--monitor", help="",
+                    action="store_true")
+parser.add_argument("-mrep", "--monthly-report", help="Print previous month (TODO) winrates and other stats for Vintage",
+                    action="store_true")
 parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
 args = parser.parse_args()
 
@@ -31,6 +34,15 @@ vintage = player_pool.PlayerPool(vintage_player_map)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.ERROR)
 
+
+# load last matches map from pickle
+# last_matches
+
+# if args.monitor:
+# check most recent 2 games of each player
+# compare with the last matches map
+# print out info, consider stacked matches, include week record
+
 if args.week_win_report:
     hero_count_threshold = 2
     last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=hero_count_threshold,
@@ -41,15 +53,18 @@ if args.week_win_report:
           '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(hero_count_threshold))
     for player_report in last_week_winrate_report:
         try:
-            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() *100
+            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() * 100
         except ZeroDivisionError:
             solo_percentage = 100
         best_heroes = player_report['best_heroes']
+        best_heroes_string = 'No games played.'
+        if best_heroes:
+            best_heroes_string = '{} ({})'.format(get_hero_name(best_heroes[0][0]), best_heroes[0][1])
 
-        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{} ({})\t{}\t{}\t{}\t{}'.format(
+        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{}\t{}\t{}\t{}\t{}'.format(
             player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
             player_report['party'].wins, player_report['party'].losses, solo_percentage,
-            get_hero_name(best_heroes[0][0]), best_heroes[0][1],
+            best_heroes_string,
             player_report['hero_count'], player_report['hero_count_more'],
             player_report['hero_more_record'].wins, player_report['hero_more_record'].losses)
         )
@@ -57,14 +72,15 @@ if args.week_win_report:
 if args.monthly_report:
     hero_count_threshold = 3
     last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=hero_count_threshold,
-                                                       _cutoff_date_from=datetime(2021, 1, 1, 0, 0, 0), _cutoff_date_to=datetime(2021, 2, 1, 0, 0, 0))
+                                                       _cutoff_date_from=datetime(2021, 1, 1, 0, 0, 0),
+                                                       _cutoff_date_to=datetime(2021, 2, 1, 0, 0, 0))
 
     print('Solo/party winrate report of the last full month, ranked')
     print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
           '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(hero_count_threshold))
     for player_report in last_week_winrate_report:
         try:
-            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() *100
+            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() * 100
         except ZeroDivisionError:
             solo_percentage = 100
         best_heroes = player_report['best_heroes']
