@@ -1,10 +1,11 @@
 import json
 import logging
+from collections import namedtuple
+
 import requests
 from pathlib import Path
 from vintage_stats.utility import get_patch_release_time, get_days_since_date, WLRecord
 from vintage_stats.constants import PATCH_ID_7_28A, PATCH_ID_7_28B, PATCH_ID_7_28C
-
 logging.basicConfig(level=logging.ERROR)
 requests_count = 0
 response_cache = {}
@@ -125,3 +126,52 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
     stack_record = WLRecord(wins, losses)
 
     return stack_record
+
+
+def get_last_matches_map(players_list):
+    last_matches_map = {}
+    threshold_in_days = 7
+    last_matches_map_file_path = Path("lastmatches.json")
+    MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths', 'assists', 'party_size', 'start_time', 'is_new'])
+
+    is_initial_run = False
+    if last_matches_map_file_path.exists():
+        with open("lastmatches.json") as last_matches_map_file:
+            last_matches_map_old = json.load(last_matches_map_file)
+            for listed_player_nick in last_matches_map_old:
+                match_data = MatchData(**(last_matches_map_old[listed_player_nick]))
+                last_matches_map_old[listed_player_nick] = match_data
+    else:
+        is_initial_run = True
+
+    for listed_player in players_list:
+        response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
+            listed_player.player_id, threshold_in_days)
+        matches_response = cached_opendota_request(response_str)
+
+        for match in matches_response.json()[:1]:
+            kills = match['kills']
+            deaths = match['deaths']
+            assists = match['assists']
+            party_size = match['party_size']
+            match_id = match['match_id']
+            player_won = check_victory(match)
+            player_hero = get_hero_name(match['hero_id'])
+            time = match['start_time']
+            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time, is_new=not is_initial_run)
+            match_data_dict = match_data._asdict()
+            last_matches_map[listed_player.nick] = match_data_dict
+    json.dump(last_matches_map, open(last_matches_map_file_path, "w"))
+
+    for listed_player_nick in last_matches_map:
+        match_data = MatchData(**(last_matches_map[listed_player_nick]))
+        last_matches_map[listed_player_nick] = match_data
+
+    if not is_initial_run:
+        for player in last_matches_map:
+            current_match_ID = last_matches_map[player].match_ID
+            previous_match_ID = last_matches_map_old[player].match_ID
+            if current_match_ID == previous_match_ID:
+                last_matches_map[player].is_new = False
+
+    return last_matches_map
