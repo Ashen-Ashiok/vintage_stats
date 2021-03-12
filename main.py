@@ -1,13 +1,12 @@
 import argparse
 import logging
-import pickle
 from datetime import datetime
 from vintage_stats import player_pool
 
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
     PATCH_ID_7_28A, PATCH_ID_7_28B, PATCH_ID_7_28C
 
-from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name
+from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name, get_last_matches_map
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
 
 from vintage_stats.utility import get_last_monday
@@ -34,14 +33,18 @@ vintage = player_pool.PlayerPool(vintage_player_map)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.ERROR)
 
-
-# load last matches map from pickle
-# last_matches
-
-# if args.monitor:
-# check most recent 2 games of each player
-# compare with the last matches map
-# print out info, consider stacked matches, include week record
+if args.monitor:
+    last_matches_map = get_last_matches_map(vintage)
+    for player in last_matches_map:
+        match_data = last_matches_map[player]
+        result_string = 'WON' if match_data.player_won else 'LOST'
+        solo_string = 'party' if match_data.party_size > 1 else 'solo'
+        time_string = datetime.fromtimestamp(match_data.start_time).strftime('%a %dth %H:%M')
+        new_string = 'NEW: ' if match_data.is_new else ''
+        print('{}{} played {} game (ID {}) as {}, {}-{}-{} and {}. Played on {}'.format(new_string, player, solo_string, match_data.match_ID,
+                                                                                        match_data.hero_name, match_data.kills,
+                                                                                        match_data.deaths, match_data.assists,
+                                                                                        result_string, time_string))
 
 if args.week_win_report:
     hero_count_threshold = 2
