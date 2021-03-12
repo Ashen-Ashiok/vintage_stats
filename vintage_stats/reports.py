@@ -1,6 +1,7 @@
-import logging
 import itertools
+import logging
 from datetime import datetime
+
 from vintage_stats.constants import *
 from vintage_stats.data_processing import cached_opendota_request, check_victory, get_stack_wl
 from vintage_stats.utility import WLRecord
