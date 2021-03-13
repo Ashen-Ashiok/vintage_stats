@@ -45,14 +45,16 @@ if args.monitor:
         solo_string = 'party' if match_data.party_size > 1 else 'solo'
         time_played = datetime.fromtimestamp(match_data.start_time)
         time_string = time_played.strftime('%a %H:%M')
-        time_ago_string = timeago.format(time_played, datetime.now())
+        minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
+        time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played, datetime.now())
         if not match_data.is_new and post_only_new:
             continue
         new_string = '** NEW!**' if match_data.is_new else ''
-        print('**{}** played {} game (ID {}) as **{}**, {}-{}-{} and **{}**, {} {}'.format(player, solo_string, match_data.match_ID,
-                                                                                           match_data.hero_name, match_data.kills,
-                                                                                           match_data.deaths, match_data.assists,
-                                                                                           result_string, time_ago_string, new_string))
+        print('**{}** played {} game (<https://www.opendota.com/matches/{}>) as **{}**, {}-{}-{} and **{}**, game started {}.'.format(
+            player, solo_string, match_data.match_ID,
+            match_data.hero_name, match_data.kills,
+            match_data.deaths, match_data.assists,
+            result_string, time_ago_string))
 
 if args.week_win_report:
     hero_count_threshold = 2
