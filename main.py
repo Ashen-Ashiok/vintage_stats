@@ -50,11 +50,12 @@ if args.monitor:
         if not match_data.is_new and post_only_new:
             continue
         new_string = '** NEW!**' if match_data.is_new else ''
-        print('**{}** played {} game (<https://www.opendota.com/matches/{}>) as **{}**, {}-{}-{} and **{}**, game started {}.'.format(
-            player, solo_string, match_data.match_ID,
-            match_data.hero_name, match_data.kills,
-            match_data.deaths, match_data.assists,
-            result_string, time_ago_string))
+        print('**{}** played {} game as **{}**, went {}-{}-{} and **{}**. The game started {}. Links:\n'
+              '<https://www.stratz.com/matches/{}>, <https://www.opendota.com/matches/{}>'.format(
+                player, solo_string, match_data.hero_name, match_data.kills,
+                match_data.deaths, match_data.assists, result_string, time_ago_string,
+                match_data.match_ID, match_data.match_ID)
+        )
 
 if args.week_win_report:
     hero_count_threshold = 2
