@@ -2,6 +2,7 @@ import json
 import logging
 from collections import namedtuple
 from pathlib import Path
+from datetime import datetime
 
 import requests
 
@@ -104,7 +105,7 @@ def log_requests_count():
         request_log.write('{}'.format(get_requests_count() + requests_used_today))
 
 
-def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PATCH_ID_7_28B):
+def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PATCH_ID_7_28B, _cutoff_date_from=None, _cutoff_date_to=None):
     """Assumes players on players_list are on the same team. Removes players in player_list from excluded_players"""
     if len(players_list) <= 1:
         logging.debug('Stack needs to have at least 2 members.')
@@ -117,8 +118,17 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
         for player in players_list:
             excluded_players_copy.remove(player)
 
-    cutoff_date = get_patch_release_time(patch)
-    days_since_cutoff = get_days_since_date(cutoff_date)
+    cutoff_date_from = get_patch_release_time(patch)
+    cutoff_date_to = datetime.now()
+
+    if _cutoff_date_from is not None:
+        cutoff_date_from = _cutoff_date_from
+
+    if _cutoff_date_to is not None:
+        cutoff_date_to = _cutoff_date_to
+
+    seconds_since_cutoff = (datetime.now() - cutoff_date_from).total_seconds()
+    days_since_cutoff = int(seconds_since_cutoff / 86400)
 
     match_sets = []
     result_map = {}
@@ -132,6 +142,9 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
 
         player_matches_set = set()
         for match in matches_response.json():
+            match_datetime = datetime.fromtimestamp(match['start_time'])
+            if match_datetime < cutoff_date_from or match_datetime > cutoff_date_to:
+                continue
             player_matches_set.add(int(match['match_id']))
             check_victory(match)
             result_map[match['match_id']] = check_victory(match)
