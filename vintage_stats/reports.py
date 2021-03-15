@@ -97,12 +97,12 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28A, threshold=0, _cu
     return full_report
 
 
-def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B):
+def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B,  _cutoff_date_from=None, _cutoff_date_to=None):
     all_possible_stacks = itertools.combinations(player_pool.get_player_list(), player_count)
 
     full_report = []
     for stack in all_possible_stacks:
-        stack_record = get_stack_wl(stack, exclusive, player_pool, patch)
+        stack_record = get_stack_wl(stack, exclusive, player_pool, patch, _cutoff_date_from, _cutoff_date_to)
         sorted_stack_nicknames = sorted(player.nick for player in stack)
         stack_name = ''
         for index, nick in enumerate(sorted_stack_nicknames):

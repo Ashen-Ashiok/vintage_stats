@@ -60,7 +60,7 @@ if args.monitor:
 if args.week_win_report:
     hero_count_threshold = 2
     last_week_winrate_report = generate_winrate_report(vintage, patch=PATCH_ID_7_28C, threshold=hero_count_threshold,
-                                                       _cutoff_date_from=get_last_monday())
+                                                       _cutoff_date_from=datetime(2021, 3, 12, 0, 0, 0), _cutoff_date_to=datetime(2021, 3, 15, 9, 0, 0))
 
     print('Solo/party winrate report of last monday ranked')
     print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
@@ -74,6 +74,11 @@ if args.week_win_report:
         best_heroes_string = 'No games played.'
         if best_heroes:
             best_heroes_string = '{} ({})'.format(get_hero_name(best_heroes[0][0]), best_heroes[0][1])
+        try:
+            if best_heroes[1][1].get_count() > 3:
+                best_heroes_string += '{} ({})'.format(get_hero_name(best_heroes[1][0]), best_heroes[1][1])
+        except IndexError:
+            pass
 
         print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{}\t{}\t{}\t{}\t{}'.format(
             player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
@@ -110,6 +115,12 @@ if args.monthly_report:
         )
 
 if args.testing_examples:
+    all_duo_stacks_report = get_all_stacks_report(vintage, 2, True, _cutoff_date_from=datetime(2021, 2, 14, 0, 0, 0),
+                                                  _cutoff_date_to=datetime(2021, 3, 14, 23, 59, 59))
+    for stack in all_duo_stacks_report:
+        print('{}\t{}'.format(stack['stack_name'], stack['stack_record']))
+    exit()
+
     fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Shifty')),
                                                 exclusive=False, patch=PATCH_ID_7_28B)
@@ -119,8 +130,6 @@ if args.testing_examples:
                                                  vintage.get_player('Keskoo')),
                                                 exclusive=True, excluded_players=vintage, patch=PATCH_ID_7_28B)
     print(fazy_keskoo_28b_stack_record)
-
-    all_duo_stacks_report = get_all_stacks_report(vintage, 2, True)
     all_triple_stacks_report = get_all_stacks_report(vintage, 3, True)
 
     for stack in (all_duo_stacks_report + all_triple_stacks_report):
