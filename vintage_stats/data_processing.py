@@ -7,7 +7,7 @@ from datetime import datetime
 import requests
 
 from vintage_stats.constants import PATCH_ID_7_28B
-from vintage_stats.utility import get_patch_release_time, get_days_since_date, WLRecord
+from vintage_stats.utility import get_patch_release_time, WLRecord
 
 logging.basicConfig(level=logging.ERROR)
 requests_count = 0
