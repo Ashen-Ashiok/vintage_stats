@@ -1,6 +1,6 @@
 import itertools
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from vintage_stats.constants import *
 from vintage_stats.data_processing import cached_opendota_request, check_victory, get_stack_wl
@@ -8,21 +8,27 @@ from vintage_stats.utility import WLRecord
 from vintage_stats.utility import get_patch_release_time
 
 
-def generate_winrate_report(players_list, patch=PATCH_ID_7_28A, threshold=0, _cutoff_date_from=None, _cutoff_date_to=None):
-    full_report = []
-    cutoff_date_from = get_patch_release_time(patch)
+def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
+    # Use default report, last week
+    cutoff_date_from = datetime.now() - timedelta(days=7)
     cutoff_date_to = datetime.now()
 
+    if patch:
+        cutoff_date_from = get_patch_release_time(patch)
+
+    # Cutoff date from overrides patch
     if _cutoff_date_from is not None:
         cutoff_date_from = _cutoff_date_from
 
     if _cutoff_date_to is not None:
         cutoff_date_to = _cutoff_date_to
 
+    # We want to have at least 1 day for the API query
     seconds_since_cutoff = (datetime.now() - cutoff_date_from).total_seconds()
     days_since_cutoff = int(seconds_since_cutoff / 86400)
     logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date_from, days_since_cutoff))
 
+    all_reports_list = []
     for listed_player in players_list:
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             listed_player.player_id, days_since_cutoff)
@@ -79,7 +85,7 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28A, threshold=0, _cu
         for hero in hero_pool:
             if hero_pool[hero]:
                 hero_count_once = hero_count_once + 1
-            if hero_pool[hero].get_count() > threshold:
+            if hero_pool[hero].get_count() > hero_count_threshold:
                 hero_count_more = hero_count_more + 1
                 hero_more_total_record += hero_pool[hero]
 
@@ -92,9 +98,9 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28A, threshold=0, _cu
                          'hero_more_record': hero_more_total_record,
                          'best_heroes': best_heroes_list
                          }
-        full_report.append(player_record)
+        all_reports_list.append(player_record)
 
-    return full_report
+    return all_reports_list
 
 
 def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B,  _cutoff_date_from=None, _cutoff_date_to=None):
