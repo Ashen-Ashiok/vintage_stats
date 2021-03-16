@@ -221,3 +221,35 @@ def get_last_matches_map(players_list):
                 last_matches_map[player] = last_matches_map[player]._replace(is_new=False)
 
     return last_matches_map
+
+
+def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold):
+    print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
+          '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(_hero_count_threshold))
+    for player_report in data_report:
+        try:
+            solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() * 100
+        except ZeroDivisionError:
+            solo_percentage = 100
+        best_heroes = player_report['best_heroes']
+        best_heroes_string = 'Not enough games played.'
+
+        if best_heroes[0] and best_heroes[0][1].get_count() > _best_heroes_threshold:
+
+            best_heroes_string = '{} ({})'.format(get_hero_name(best_heroes[0][0]), best_heroes[0][1])
+
+        try:
+            index = 1
+            while best_heroes[index] and best_heroes[index][1].get_count() > _best_heroes_threshold:
+                best_heroes_string += '{} ({})'.format(get_hero_name(best_heroes[index][0]), best_heroes[index][1])
+                index += 1
+        except IndexError:
+            pass
+
+        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{}\t{}\t{}\t{}\t{}'.format(
+            player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
+            player_report['party'].wins, player_report['party'].losses, solo_percentage,
+            best_heroes_string,
+            player_report['hero_count'], player_report['hero_count_more'],
+            player_report['hero_more_record'].wins, player_report['hero_more_record'].losses)
+        )
