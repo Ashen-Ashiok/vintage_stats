@@ -6,7 +6,7 @@ import timeago
 from vintage_stats import player_pool
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
     PATCH_ID_7_28B, PATCH_ID_7_28C
-from vintage_stats.data_processing import get_requests_count, get_stack_wl, get_hero_name, get_last_matches_map, log_requests_count, \
+from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
 from vintage_stats.utility import get_last_monday
