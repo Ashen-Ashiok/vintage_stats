@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+
 from vintage_stats.constants import *
 
 
@@ -14,11 +15,22 @@ class WLRecord:
         new_losses = self.losses + other.losses
         return WLRecord(new_wins, new_losses)
 
+    def add_match(self, player_won):
+        if player_won:
+            self.wins = self.wins + 1
+        else:
+            self.losses = self.losses + 1
+
     def __str__(self):
         return '{}–{}'.format(self.wins, self.losses)
 
     def get_count(self):
         return self.losses + self.wins
+
+    def get_record_goodness(self):
+        count = self.wins + self.losses
+        net = self.wins - self.losses
+        return net * 100 + count
 
     def get_winrate(self):
         try:
