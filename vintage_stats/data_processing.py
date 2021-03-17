@@ -235,7 +235,7 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
         best_heroes_string = 'Not enough games played.'
 
         try:
-            if best_heroes[0][1].get_count() > _best_heroes_threshold:
+            if best_heroes[0][1].get_count() >= _best_heroes_threshold:
                 best_heroes_string = '{} ({})'.format(get_hero_name(best_heroes[0][0]), best_heroes[0][1])
 
                 index = 1

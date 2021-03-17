@@ -85,7 +85,7 @@ def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _c
         for hero in hero_pool:
             if hero_pool[hero]:
                 hero_count_once = hero_count_once + 1
-            if hero_pool[hero].get_count() > hero_count_threshold:
+            if hero_pool[hero].get_count() >= hero_count_threshold:
                 hero_count_more = hero_count_more + 1
                 hero_more_total_record += hero_pool[hero]
 
