@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from vintage_stats.constants import *
 from vintage_stats.data_processing import cached_opendota_request, check_victory, get_stack_wl
-from vintage_stats.utility import WLRecord
+from vintage_stats.utility import WLRecord, get_days_since_date
 from vintage_stats.utility import get_patch_release_time
 
 
@@ -24,8 +24,7 @@ def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _c
         cutoff_date_to = _cutoff_date_to
 
     # We want to have at least 1 day for the API query
-    seconds_since_cutoff = (datetime.now() - cutoff_date_from).total_seconds()
-    days_since_cutoff = int(seconds_since_cutoff / 86400)
+    days_since_cutoff = get_days_since_date(cutoff_date_from)
     logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date_from, days_since_cutoff))
 
     all_reports_list = []
@@ -103,7 +102,8 @@ def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _c
     return all_reports_list
 
 
-def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B,  _cutoff_date_from=None, _cutoff_date_to=None):
+def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B,
+                          _cutoff_date_from=None, _cutoff_date_to=None):
     all_possible_stacks = itertools.combinations(player_pool.get_player_list(), player_count)
 
     full_report = []

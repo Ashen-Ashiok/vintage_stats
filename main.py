@@ -3,9 +3,9 @@ import logging
 from datetime import datetime, timedelta
 import timeago
 
-from vintage_stats import player_pool
+import vintage_stats.player
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
-    PATCH_ID_7_28B, PATCH_ID_7_28C
+    PATCH_ID_7_28B
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
@@ -17,7 +17,8 @@ parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
 parser.add_argument("-monrep", "--since-monday-report", help="Print this week (since last Monday) winrates and other stats for Vintage",
                     action="store_true")
 
-parser.add_argument("-report", "--custom-report", help="Print previous month (TODO) winrates and other stats for Vintage", action="store_true")
+parser.add_argument("-report", "--custom-report", help="Print previous month (TODO) winrates and other stats for Vintage",
+                    action="store_true")
 
 parser.add_argument("-monitor", "--monitor", help="")
 
@@ -36,7 +37,7 @@ vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': SHIFTY_ID, 'nick': 'Shifty'},
                       {'pid': WARELIC_ID, 'nick': 'Warelic'}]
 
-vintage = player_pool.PlayerPool(vintage_player_map)
+vintage = vintage_stats.player.PlayerPool(vintage_player_map)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -87,8 +88,8 @@ if args.custom_report:
     last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=best_heroes_threshold,
                                                        _cutoff_date_from=date_from, _cutoff_date_to=date_to)
 
-    print("Printing Vintage winrate report for time period from {} to {}, hero threshold set to {}.".format(date_from.strftime('%d-%b-%y'), date_to.strftime(
-        '%d-%b-%y'), best_heroes_threshold))
+    print("Printing Vintage winrate report for time period from {} to {}, hero threshold set to {}.".format(
+        date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), best_heroes_threshold))
     format_and_print_winrate_report(last_week_winrate_report, best_heroes_threshold, best_heroes_threshold)
 
 if args.testing_examples:

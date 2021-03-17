@@ -177,7 +177,8 @@ def get_last_matches_map(players_list):
     last_matches_map = {}
     threshold_in_days = 7
     last_matches_map_file_path = Path("lastmatches.json")
-    MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths', 'assists', 'party_size', 'start_time', 'is_new'])
+    MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
+                                         'assists', 'party_size', 'start_time', 'is_new'])
 
     is_initial_run = False
     if last_matches_map_file_path.exists():
