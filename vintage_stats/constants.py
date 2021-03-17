@@ -9,4 +9,3 @@ WARELIC_ID = 211310297
 PATCH_ID_7_28A = 47  # id of patch 7.28 based on https://github.com/odota/dotaconstants/blob/master/json/patch.json
 PATCH_ID_7_28B = 471  # custom id
 PATCH_ID_7_28C = 472  # custom id
-
