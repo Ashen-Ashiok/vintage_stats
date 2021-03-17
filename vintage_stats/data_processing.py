@@ -2,35 +2,34 @@ import json
 import logging
 from collections import namedtuple
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import requests
 
-from vintage_stats.constants import PATCH_ID_7_28B
-from vintage_stats.utility import get_patch_release_time, WLRecord
+from vintage_stats.constants import VERSIONS
+from vintage_stats.utility import WLRecord
 
 logging.basicConfig(level=logging.ERROR)
-requests_count = 0
-response_cache = {}
+
 hero_map = None
 
 
-def add_request_count():
-    global requests_count
-    requests_count = requests_count + 1
+class CacheHandler:
+    response_cache = {}
+    requests_count = 0
+    hero_map = None
 
-
-def cached_opendota_request(response_str):
-    global response_cache
-    if response_str in response_cache:
-        logging.debug('Cached used for req: {}'.format(response_str))
-        return response_cache[response_str]
-    else:
-        response = requests.get(response_str)
-        logging.debug('Cached req: {}'.format(response_str))
-        add_request_count()
-        response_cache[response_str] = response
-        return response
+    @staticmethod
+    def cached_opendota_request(response_str):
+        if response_str in CacheHandler.response_cache:
+            logging.debug('Cached used for req: {}'.format(response_str))
+            return CacheHandler.response_cache[response_str]
+        else:
+            response = requests.get(response_str)
+            logging.debug('Cached req: {}'.format(response_str))
+            CacheHandler.requests_count += 1
+            CacheHandler.response_cache[response_str] = response
+            return response
 
 
 def check_victory(player_match_data):
@@ -48,10 +47,10 @@ def get_file_cached_player_stats(player_id):
     if Path.is_file(players_stats_path):
         with open(players_stats_path) as match_file:
             data = json.load(match_file)
-            response_cache['https://api.opendota.com/api/players/{}'.format(player_id)] = data
+            CacheHandler.response_cache['https://api.opendota.com/api/players/{}'.format(player_id)] = data
             return data
     else:
-        data = cached_opendota_request('https://api.opendota.com/api/players/{}'.format(player_id)).json()
+        data = CacheHandler.cached_opendota_request('https://api.opendota.com/api/players/{}'.format(player_id)).json()
         dump_file = open(players_stats_path, 'w')
         json.dump(data, dump_file)
         return data
@@ -64,19 +63,18 @@ def get_file_cached_match_stats(match_id):
     if Path.is_file(match_stats_path):
         with open(match_stats_path) as match_file:
             data = json.load(match_file)
-            response_cache['https://api.opendota.com/api/matches/{}'.format(match_id)] = data
+            CacheHandler.response_cache['https://api.opendota.com/api/matches/{}'.format(match_id)] = data
             return data
     else:
-        data = cached_opendota_request('https://api.opendota.com/api/matches/{}'.format(match_id)).json()
+        data = CacheHandler.cached_opendota_request('https://api.opendota.com/api/matches/{}'.format(match_id)).json()
         dump_file = open(match_stats_path, 'w')
         json.dump(data, dump_file)
         return data
 
 
 def get_hero_name(hero_id):
-    global hero_map
-    hero_map = cached_opendota_request('https://api.opendota.com/api/heroes').json()
-    for hero_node in hero_map:
+    CacheHandler.hero_map = CacheHandler.cached_opendota_request('https://api.opendota.com/api/heroes').json()
+    for hero_node in CacheHandler.hero_map:
         if int(hero_node['id']) == hero_id:
             return hero_node['localized_name']
     return 'Not Found'
@@ -88,8 +86,7 @@ def get_mmr_change(player_won, was_party):
 
 
 def get_requests_count():
-    global requests_count
-    return requests_count
+    return CacheHandler.requests_count
 
 
 def log_requests_count():
@@ -105,7 +102,7 @@ def log_requests_count():
         request_log.write('{}'.format(get_requests_count() + requests_used_today))
 
 
-def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PATCH_ID_7_28B, _cutoff_date_from=None, _cutoff_date_to=None):
+def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=None, _cutoff_date_from=None, _cutoff_date_to=None):
     """Assumes players on players_list are on the same team. Removes players in player_list from excluded_players"""
     if len(players_list) <= 1:
         logging.debug('Stack needs to have at least 2 members.')
@@ -118,8 +115,12 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
         for player in players_list:
             excluded_players_copy.remove(player)
 
-    cutoff_date_from = get_patch_release_time(patch)
+    # Default values
+    cutoff_date_from = datetime.now() - timedelta(days=28)
     cutoff_date_to = datetime.now()
+
+    if patch in VERSIONS:
+        cutoff_date_from = VERSIONS[patch].release_time
 
     if _cutoff_date_from is not None:
         cutoff_date_from = _cutoff_date_from
@@ -138,7 +139,7 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
     for player in players_list:
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             player.player_id, days_since_cutoff)
-        matches_response = cached_opendota_request(response_str)
+        matches_response = CacheHandler.cached_opendota_request(response_str)
 
         player_matches_set = set()
         for match in matches_response.json():
@@ -155,7 +156,7 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=PAT
         for player in excluded_players_copy:
             response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
                 player.player_id, days_since_cutoff)
-            matches_response = cached_opendota_request(response_str)
+            matches_response = CacheHandler.cached_opendota_request(response_str)
 
             for match in matches_response.json():
                 excluded_matches_set.add(int(match['match_id']))
@@ -193,7 +194,7 @@ def get_last_matches_map(players_list):
     for listed_player in players_list:
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             listed_player.player_id, threshold_in_days)
-        matches_response = cached_opendota_request(response_str)
+        matches_response = CacheHandler.cached_opendota_request(response_str)
 
         for match in matches_response.json()[:1]:
             kills = match['kills']

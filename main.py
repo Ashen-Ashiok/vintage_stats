@@ -4,8 +4,7 @@ from datetime import datetime, timedelta
 import timeago
 
 import vintage_stats.player
-from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, \
-    PATCH_ID_7_28B
+from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
@@ -97,16 +96,15 @@ if args.testing_examples:
                                                   _cutoff_date_to=datetime(2021, 3, 14, 23, 59, 59))
     for stack in all_duo_stacks_report:
         print('{}\t{}'.format(stack['stack_name'], stack['stack_record']))
-    exit()
 
     fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Shifty')),
-                                                exclusive=False, patch=PATCH_ID_7_28B)
+                                                exclusive=False, patch=VERSIONS['7.28b'])
     print(fazy_shifty_28b_stack_record)
 
     fazy_keskoo_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Keskoo')),
-                                                exclusive=True, excluded_players=vintage, patch=PATCH_ID_7_28B)
+                                                exclusive=True, excluded_players=vintage, patch=VERSIONS['7.28b'])
     print(fazy_keskoo_28b_stack_record)
     all_triple_stacks_report = get_all_stacks_report(vintage, 3, True)
 

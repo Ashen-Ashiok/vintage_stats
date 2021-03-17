@@ -2,19 +2,18 @@ import itertools
 import logging
 from datetime import datetime, timedelta
 
-from vintage_stats.constants import *
-from vintage_stats.data_processing import cached_opendota_request, check_victory, get_stack_wl
+from vintage_stats.data_processing import CacheHandler, check_victory, get_stack_wl
 from vintage_stats.utility import WLRecord, get_days_since_date
-from vintage_stats.utility import get_patch_release_time
+from vintage_stats.constants import VERSIONS
 
 
-def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
+def generate_winrate_report(players_list, patch_string=None, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
     # Use default report, last week
     cutoff_date_from = datetime.now() - timedelta(days=7)
     cutoff_date_to = datetime.now()
 
-    if patch:
-        cutoff_date_from = get_patch_release_time(patch)
+    if patch_string in VERSIONS:
+        cutoff_date_from = VERSIONS[patch_string].release_time
 
     # Cutoff date from overrides patch
     if _cutoff_date_from is not None:
@@ -32,7 +31,7 @@ def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _c
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             listed_player.player_id, days_since_cutoff)
 
-        matches_response = cached_opendota_request(response_str)
+        matches_response = CacheHandler.cached_opendota_request(response_str)
 
         solo_wins = solo_losses = party_wins = party_losses = 0
         hero_pool = {}
@@ -102,7 +101,7 @@ def generate_winrate_report(players_list, patch=None, hero_count_threshold=3, _c
     return all_reports_list
 
 
-def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B,
+def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=VERSIONS['7.28b'],
                           _cutoff_date_from=None, _cutoff_date_to=None):
     all_possible_stacks = itertools.combinations(player_pool.get_player_list(), player_count)
 

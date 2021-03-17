@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
 
-from vintage_stats.constants import *
-
 
 class WLRecord:
     """Holds wins/losses record, able to provide basic statistics (games count, winrate)"""
@@ -52,13 +50,3 @@ def get_last_monday():
                                                                             minutes=time_now.minute,
                                                                             seconds=time_now.second)
     return last_monday
-
-
-def get_patch_release_time(patch):
-    """Helper class for converting patch IDs into patch release dates"""
-    cases = {
-        PATCH_ID_7_28A: datetime(2020, 12, 22, 12, 0),
-        PATCH_ID_7_28B: datetime(2021, 1, 11, 6, 0),
-        PATCH_ID_7_28C: datetime(2021, 2, 20, 3, 0),
-    }
-    return cases.get(patch, datetime(2020, 12, 1, 0, 0))
