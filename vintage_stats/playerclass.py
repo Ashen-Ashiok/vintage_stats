@@ -7,7 +7,7 @@ class PlayerClass:
     def __init__(self, pid, nick):
         self.player_id = pid
         self.nick = nick
-        self.player_data = data_processing.cached_opendota_request('https://api.opendota.com/api/players/{}'.format(self.player_id)).json()
+        self.player_data = data_processing.get_file_cached_player_stats(self.player_id)
         self.profile_nickname = self.player_data['profile']['personaname']
 
     def __lt__(self, other):
