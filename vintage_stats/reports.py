@@ -73,12 +73,12 @@ def generate_winrate_report(players_list, patch_string=None, hero_count_threshol
         hero_count_more = 0
         hero_more_total_record = WLRecord(0, 0)
 
-        best_heroes_list = []
+        hero_records_list = []
         for hero in hero_pool:
             hero_id_record_tuple = (hero, hero_pool[hero])
-            best_heroes_list.append(hero_id_record_tuple)
+            hero_records_list.append(hero_id_record_tuple)
 
-        best_heroes_list.sort(key=lambda x: x[1].get_record_goodness(), reverse=True)
+        hero_records_list.sort(key=lambda x: x[1].get_record_goodness(), reverse=True)
 
         for hero in hero_pool:
             if hero_pool[hero]:
@@ -94,7 +94,7 @@ def generate_winrate_report(players_list, patch_string=None, hero_count_threshol
                          'hero_count': hero_count_once,
                          'hero_count_more': hero_count_more,
                          'hero_more_record': hero_more_total_record,
-                         'best_heroes': best_heroes_list
+                         'best_heroes': hero_records_list
                          }
         all_reports_list.append(player_record)
 

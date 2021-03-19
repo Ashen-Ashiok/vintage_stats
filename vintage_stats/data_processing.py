@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import requests
 
 from vintage_stats.constants import VERSIONS
-from vintage_stats.utility import WLRecord
+from vintage_stats.utility import WLRecord, get_days_since_date
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -128,8 +128,7 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=Non
     if _cutoff_date_to is not None:
         cutoff_date_to = _cutoff_date_to
 
-    seconds_since_cutoff = (datetime.now() - cutoff_date_from).total_seconds()
-    days_since_cutoff = int(seconds_since_cutoff / 86400)
+    days_since_cutoff = get_days_since_date(cutoff_date_from)
 
     match_sets = []
     result_map = {}
@@ -225,32 +224,50 @@ def get_last_matches_map(players_list):
     return last_matches_map
 
 
-def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold):
-    print('Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
-          '\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses\t Threshold {}'.format(_hero_count_threshold))
+def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold, heroes_count=3):
+    print(f'Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
+          f'\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses'
+          f'\tWorst heroes\t Threshold {_hero_count_threshold}')
     for player_report in data_report:
         try:
             solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() * 100
         except ZeroDivisionError:
             solo_percentage = 100
         best_heroes = player_report['best_heroes']
+
         best_heroes_string = 'Not enough games played.'
+        count = 0
+        for best_hero in best_heroes:
+            if count >= heroes_count:
+                break
+            if best_hero[1].get_count() >= _best_heroes_threshold and best_hero[1].get_record_goodness() >= 4:
+                best_hero_name = get_hero_name(best_hero[0])
+                best_hero_record = best_hero[1]
+                if best_heroes_string == 'Not enough games played.':
+                    best_heroes_string = f'="{best_hero_name} ({best_hero_record})"'
+                else:
+                    best_heroes_string += f' & CHAR(10) & "{best_hero_name} ({best_hero_record})"'
+                count += 1
 
-        try:
-            if best_heroes[0][1].get_count() >= _best_heroes_threshold:
-                best_heroes_string = '{} ({})'.format(get_hero_name(best_heroes[0][0]), best_heroes[0][1])
+        worst_heroes_string = 'Not enough games played.'
+        count = 0
+        for worst_hero in reversed(best_heroes):
+            if count >= heroes_count:
+                break
+            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < 0:
+                worst_hero_name = get_hero_name(worst_hero[0])
+                worst_hero_record = worst_hero[1]
+                if worst_heroes_string == 'Not enough games played.':
+                    worst_heroes_string = f'="{worst_hero_name} ({worst_hero_record})"'
+                else:
+                    worst_heroes_string += f' & CHAR(10) & "{worst_hero_name} ({worst_hero_record})"'
+                count += 1
 
-                index = 1
-                while best_heroes[index] and best_heroes[index][1].get_count() > _best_heroes_threshold:
-                    best_heroes_string += '{} ({})'.format(get_hero_name(best_heroes[index][0]), best_heroes[index][1])
-                    index += 1
-        except IndexError:
-            pass
+        for hero in best_heroes:
+            logging.debug(f'{get_hero_name(hero[0])} - {hero[1]}')
 
-        print('{}\t{}\t{}\t{}\t{}\t{:.2f}%\t{}\t{}\t{}\t{}\t{}'.format(
-            player_report['nick'], player_report['solo'].wins, player_report['solo'].losses,
-            player_report['party'].wins, player_report['party'].losses, solo_percentage,
-            best_heroes_string,
-            player_report['hero_count'], player_report['hero_count_more'],
-            player_report['hero_more_record'].wins, player_report['hero_more_record'].losses)
-        )
+        print(f'{player_report["nick"]}\t{player_report["solo"].wins}\t{player_report["solo"].losses}'
+              f'\t{player_report["party"].wins}\t{player_report["party"].losses}\t{solo_percentage:.2f}%'
+              f'\t{best_heroes_string}\t{player_report["hero_count"]}\t{player_report["hero_count_more"]}'
+              f'\t{player_report["hero_more_record"].wins}\t{player_report["hero_more_record"].losses}\t{worst_heroes_string}')
+
