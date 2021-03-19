@@ -38,9 +38,9 @@ class WLRecord:
 
 
 def get_days_since_date(date):
-    """Ensures at least 1 day at minimum without corrupting the date itself."""
+    """Ensures at least 2 days at minimum without corrupting the date itself."""
     seconds_since_cutoff = (datetime.now() - date).total_seconds()
-    return int(seconds_since_cutoff / 86400)
+    return int(seconds_since_cutoff / 86400) + 1
 
 
 def get_last_monday():
