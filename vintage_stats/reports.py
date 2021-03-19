@@ -1,37 +1,53 @@
-import logging
 import itertools
-from datetime import datetime
-from vintage_stats.constants import *
-from vintage_stats.data_processing import cached_opendota_request, check_victory, get_stack_wl
-from vintage_stats.utility import WLRecord
-from vintage_stats.utility import get_patch_release_time
+import logging
+from datetime import datetime, timedelta
+
+from vintage_stats.data_processing import CacheHandler, check_victory, get_stack_wl
+from vintage_stats.utility import WLRecord, get_days_since_date
+from vintage_stats.constants import VERSIONS
 
 
-def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0):
-    full_report = []
+def generate_winrate_report(players_list, patch_string=None, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
+    # Use default report, last week
+    cutoff_date_from = datetime.now() - timedelta(days=7)
+    cutoff_date_to = datetime.now()
+
+    if patch_string in VERSIONS:
+        cutoff_date_from = VERSIONS[patch_string].release_time
+
+    # Cutoff date from overrides patch
+    if _cutoff_date_from is not None:
+        cutoff_date_from = _cutoff_date_from
+
+    if _cutoff_date_to is not None:
+        cutoff_date_to = _cutoff_date_to
+
+    # We want to have at least 1 day for the API query
+    days_since_cutoff = get_days_since_date(cutoff_date_from)
+    logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date_from, days_since_cutoff))
+
+    all_reports_list = []
     for listed_player in players_list:
-        cutoff_date = get_patch_release_time(patch)
-        seconds_since_cutoff = (datetime.now() - cutoff_date).total_seconds()
-        days_since_cutoff = int(seconds_since_cutoff/86400)
-        logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date, days_since_cutoff))
-
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             listed_player.player_id, days_since_cutoff)
 
-        matches_response = cached_opendota_request(response_str)
+        matches_response = CacheHandler.cached_opendota_request(response_str)
 
         solo_wins = solo_losses = party_wins = party_losses = 0
         hero_pool = {}
         for match in matches_response.json():
             match_datetime = datetime.fromtimestamp(match['start_time'])
 
-            if match_datetime < cutoff_date:
+            if match_datetime < cutoff_date_from or match_datetime > cutoff_date_to:
                 continue
             player_won = check_victory(match)
             if match['hero_id'] not in hero_pool:
-                hero_pool[match['hero_id']] = 1
+                if player_won:
+                    hero_pool[match['hero_id']] = WLRecord(1, 0)
+                else:
+                    hero_pool[match['hero_id']] = WLRecord(0, 1)
             else:
-                hero_pool[match['hero_id']] = hero_pool[match['hero_id']] + 1
+                hero_pool[match['hero_id']].add_match(player_won)
 
             if player_won:
                 if not match['party_size']:
@@ -53,28 +69,45 @@ def generate_winrate_report(players_list, patch=PATCH_ID_7_28B, threshold=0):
         solo_record = WLRecord(solo_wins, solo_losses)
         party_record = WLRecord(party_wins, party_losses)
 
-        hero_count = 0
+        hero_count_once = 0
+        hero_count_more = 0
+        hero_more_total_record = WLRecord(0, 0)
+
+        best_heroes_list = []
         for hero in hero_pool:
-            if hero_pool[hero] > threshold:
-                hero_count = hero_count + 1
+            hero_id_record_tuple = (hero, hero_pool[hero])
+            best_heroes_list.append(hero_id_record_tuple)
+
+        best_heroes_list.sort(key=lambda x: x[1].get_record_goodness(), reverse=True)
+
+        for hero in hero_pool:
+            if hero_pool[hero]:
+                hero_count_once = hero_count_once + 1
+            if hero_pool[hero].get_count() >= hero_count_threshold:
+                hero_count_more = hero_count_more + 1
+                hero_more_total_record += hero_pool[hero]
 
         player_record = {'nick': listed_player.nick,
                          'total': solo_record + party_record,
                          'solo': solo_record,
                          'party': party_record,
-                         'hero_count': hero_count
+                         'hero_count': hero_count_once,
+                         'hero_count_more': hero_count_more,
+                         'hero_more_record': hero_more_total_record,
+                         'best_heroes': best_heroes_list
                          }
-        full_report.append(player_record)
+        all_reports_list.append(player_record)
 
-    return full_report
+    return all_reports_list
 
 
-def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=PATCH_ID_7_28B):
+def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=VERSIONS['7.28b'],
+                          _cutoff_date_from=None, _cutoff_date_to=None):
     all_possible_stacks = itertools.combinations(player_pool.get_player_list(), player_count)
 
     full_report = []
     for stack in all_possible_stacks:
-        stack_record = get_stack_wl(stack, exclusive, player_pool, patch)
+        stack_record = get_stack_wl(stack, exclusive, player_pool, patch, _cutoff_date_from, _cutoff_date_to)
         sorted_stack_nicknames = sorted(player.nick for player in stack)
         stack_name = ''
         for index, nick in enumerate(sorted_stack_nicknames):
