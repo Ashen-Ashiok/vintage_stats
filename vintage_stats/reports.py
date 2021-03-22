@@ -31,7 +31,7 @@ def generate_winrate_report(players_list, patch_string=None, hero_count_threshol
         response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
             listed_player.player_id, days_since_cutoff)
 
-        matches_response = CacheHandler.cached_opendota_request(response_str)
+        matches_response = CacheHandler.cached_opendota_request_get(response_str)
 
         solo_wins = solo_losses = party_wins = party_losses = 0
         hero_pool = {}
