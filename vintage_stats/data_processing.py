@@ -250,11 +250,11 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
             solo_percentage = player_report['solo'].get_count() / player_report['total'].get_count() * 100
         except ZeroDivisionError:
             solo_percentage = 100
-        best_heroes = player_report['best_heroes']
+        heroes = player_report['best_heroes']
 
         best_heroes_string = 'Not enough games played.'
         count = 0
-        for best_hero in best_heroes:
+        for best_hero in heroes:
             if count >= heroes_count:
                 break
             if best_hero[1].get_count() >= _best_heroes_threshold and best_hero[1].get_record_goodness() >= 4:
@@ -267,11 +267,13 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
                 count += 1
 
         worst_heroes_string = 'Not enough games played.'
+        no_bad_heroes_flag = True
         count = 0
-        for worst_hero in reversed(best_heroes):
+        for worst_hero in reversed(heroes):
             if count >= heroes_count:
                 break
-            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < 0:
+            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < -101:
+                no_bad_heroes_flag = False
                 worst_hero_name = get_hero_name(worst_hero[0])
                 worst_hero_record = worst_hero[1]
                 if worst_heroes_string == 'Not enough games played.':
@@ -280,10 +282,12 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
                     worst_heroes_string += f' & CHAR(10) & "{worst_hero_name} ({worst_hero_record})"'
                 count += 1
 
-        for hero in best_heroes:
-            logging.debug(f'{get_hero_name(hero[0])} - {hero[1]}')
+        if no_bad_heroes_flag:
+            worst_heroes_string = 'No such heroes.'
 
-        print(f'{player_report["nick"]}\t{player_report["solo"].wins}\t{player_report["solo"].losses}'
+        print(f'{player_report["nick"]}\t{player_report["total"].get_count()}'
+              f'\t{player_report["total"].wins}\t{player_report["total"].losses}'
+              f'\t{player_report["solo"].wins}\t{player_report["solo"].losses}'
               f'\t{player_report["party"].wins}\t{player_report["party"].losses}\t{solo_percentage:.2f}%'
               f'\t{best_heroes_string}\t{player_report["hero_count"]}\t{player_report["hero_count_more"]}'
               f'\t{player_report["hero_more_record"].wins}\t{player_report["hero_more_record"].losses}\t{worst_heroes_string}')
