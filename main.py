@@ -6,7 +6,7 @@ import timeago
 import vintage_stats.player
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
-    format_and_print_winrate_report
+    format_and_print_winrate_report, request_match_parse
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
 from vintage_stats.utility import get_last_monday
 
@@ -48,7 +48,10 @@ if args.monitor:
         post_only_new = True
     last_matches_map = get_last_matches_map(vintage)
 
+    set_for_parse = set()
+
     for player in last_matches_map:
+
         match_data = last_matches_map[player]
         result_string = 'WON' if match_data.player_won else 'LOST'
         solo_string = 'party' if match_data.party_size > 1 else 'solo'
@@ -64,6 +67,10 @@ if args.monitor:
                 player, solo_string, match_data.hero_name, match_data.kills,
                 match_data.deaths, match_data.assists, result_string, time_ago_string,
                 match_data.match_ID, match_data.match_ID))
+        set_for_parse.add(match_data.match_ID)
+
+    for match_id in set_for_parse:
+        request_match_parse(match_id).json()
 
 if args.since_monday_report:
     hero_count_threshold = 2
