@@ -186,9 +186,16 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=Non
 
 
 def request_match_parse(match_id):
-    response_str = f'https://api.opendota.com/api/request/{match_id}'
-    response = CacheHandler.cached_opendota_request_post(response_str)
+    request_log_path = Path("parse_requested.log")
+    if not request_log_path.exists():
+        with open('parse_requested.log', 'w') as parse_log:
+            parse_log.write('0')
+    with open('parse_requested.log', 'r+') as parse_log:
+        response_str = f'https://api.opendota.com/api/request/{match_id}'
+        response = CacheHandler.cached_opendota_request_post(response_str)
+        parse_log.write(f'Request: {response_str}\nResponse: {response.json()}')
     return response
+
 
 def get_last_matches_map(players_list):
     last_matches_map = {}
