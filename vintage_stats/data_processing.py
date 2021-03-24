@@ -188,12 +188,12 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=Non
 def request_match_parse(match_id):
     request_log_path = Path("parse_requested.log")
     if not request_log_path.exists():
-        with open('parse_requested.log', 'w') as parse_log:
-            parse_log.write('0')
-    with open('parse_requested.log', 'r+') as parse_log:
+        with open('parse_requested.log', 'w'):
+            pass
+    with open('parse_requested.log', 'a') as parse_log:
         response_str = f'https://api.opendota.com/api/request/{match_id}'
         response = CacheHandler.cached_opendota_request_post(response_str)
-        parse_log.write(f'Request: {response_str}\nResponse: {response.json()}')
+        parse_log.write(f'\nRequest: {response_str}\nResponse: {response.json()}')
     return response
 
 
@@ -298,4 +298,3 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
               f'\t{player_report["party"].wins}\t{player_report["party"].losses}\t{solo_percentage:.2f}%'
               f'\t{best_heroes_string}\t{player_report["hero_count"]}\t{player_report["hero_count_more"]}'
               f'\t{player_report["hero_more_record"].wins}\t{player_report["hero_more_record"].losses}\t{worst_heroes_string}')
-
