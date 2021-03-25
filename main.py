@@ -54,7 +54,10 @@ if args.monitor:
 
         match_data = last_matches_map[player]
         result_string = 'WON' if match_data.player_won else 'LOST'
-        solo_string = 'party' if match_data.party_size > 1 else 'solo'
+        try:
+            solo_string = 'party' if match_data.party_size > 1 else 'solo'
+        except TypeError:
+            solo_string = 'solo'
         time_played = datetime.fromtimestamp(match_data.start_time)
         time_string = time_played.strftime('%a %H:%M')
         minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
