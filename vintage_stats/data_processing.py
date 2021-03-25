@@ -64,7 +64,7 @@ def get_file_cached_player_stats(player_id):
     else:
         data = CacheHandler.cached_opendota_request_get('https://api.opendota.com/api/players/{}'.format(player_id)).json()
         dump_file = open(players_stats_path, 'w')
-        json.dump(data, dump_file)
+        json.dump(data, dump_file, indent=4)
         return data
 
 
@@ -80,7 +80,7 @@ def get_file_cached_match_stats(match_id):
     else:
         data = CacheHandler.cached_opendota_request_get('https://api.opendota.com/api/matches/{}'.format(match_id)).json()
         dump_file = open(match_stats_path, 'w')
-        json.dump(data, dump_file)
+        json.dump(data, dump_file, indent=4)
         return data
 
 
@@ -231,7 +231,7 @@ def get_last_matches_map(players_list, days_threshold=60):
             match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time, is_new=not is_initial_run)
             match_data_dict = match_data._asdict()
             last_matches_map[listed_player.nick] = match_data_dict
-    json.dump(last_matches_map, open(last_matches_map_file_path, "w"))
+    json.dump(last_matches_map, open(last_matches_map_file_path, "w"), indent=4)
 
     for listed_player_nick in last_matches_map:
         match_data = MatchData(**(last_matches_map[listed_player_nick]))
