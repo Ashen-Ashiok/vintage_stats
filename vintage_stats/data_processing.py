@@ -197,9 +197,9 @@ def request_match_parse(match_id):
     return response
 
 
-def get_last_matches_map(players_list):
+def get_last_matches_map(players_list, days_threshold=60):
     last_matches_map = {}
-    threshold_in_days = 7
+    threshold_in_days = days_threshold
     last_matches_map_file_path = Path("lastmatches.json")
     MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
                                          'assists', 'party_size', 'start_time', 'is_new'])
