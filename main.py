@@ -76,8 +76,8 @@ if args.monitor:
         request_match_parse(match_id).json()
 
 if args.since_monday_report:
-    hero_count_threshold = 2
-    best_heroes_threshold = 3
+    hero_count_threshold = 1
+    best_heroes_threshold = 1
     date_from = get_last_monday()
     date_to = datetime.now()
     last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=hero_count_threshold,

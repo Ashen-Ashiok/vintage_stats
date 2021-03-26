@@ -248,7 +248,10 @@ def get_last_matches_map(players_list, days_threshold=60):
     return last_matches_map
 
 
-def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold, heroes_count=3):
+def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold, heroes_count=3, list_all_heroes=False):
+    # For logic behind these numbers, look at get_record_goodness()
+    worst_hero_goodness_threshold = -100
+    best_hero_goodness_threshold = 100
     print(f'Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
           f'\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses'
           f'\tWorst heroes\t Threshold {_hero_count_threshold}')
@@ -260,11 +263,13 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
         heroes = player_report['best_heroes']
 
         best_heroes_string = 'Not enough games played.'
+        no_good_heroes_flag = True
         count = 0
         for best_hero in heroes:
             if count >= heroes_count:
                 break
-            if best_hero[1].get_count() >= _best_heroes_threshold and best_hero[1].get_record_goodness() >= 104: # TODO MAGIC NUMBER
+            if best_hero[1].get_count() >= _best_heroes_threshold and best_hero[1].get_record_goodness() > best_hero_goodness_threshold:
+                no_good_heroes_flag = False
                 best_hero_name = get_hero_name(best_hero[0])
                 best_hero_record = best_hero[1]
                 if best_heroes_string == 'Not enough games played.':
@@ -273,13 +278,16 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
                     best_heroes_string += f' & CHAR(10) & "{best_hero_name} ({best_hero_record})"'
                 count += 1
 
+        if no_good_heroes_flag:
+            best_heroes_string = 'No such heroes.'
+
         worst_heroes_string = 'Not enough games played.'
         no_bad_heroes_flag = True
         count = 0
         for worst_hero in reversed(heroes):
             if count >= heroes_count:
                 break
-            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < -101: # TODO MAGIC NUMBER
+            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < worst_hero_goodness_threshold:
                 no_bad_heroes_flag = False
                 worst_hero_name = get_hero_name(worst_hero[0])
                 worst_hero_record = worst_hero[1]
@@ -298,3 +306,10 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
               f'\t{player_report["party"].wins}\t{player_report["party"].losses}\t{solo_percentage:.2f}%'
               f'\t{best_heroes_string}\t{player_report["hero_count"]}\t{player_report["hero_count_more"]}'
               f'\t{player_report["hero_more_record"].wins}\t{player_report["hero_more_record"].losses}\t{worst_heroes_string}')
+
+    if list_all_heroes:
+        for player_report in data_report:
+            print(f'--- {player_report["nick"]} ---')
+            heroes = player_report['best_heroes']
+            for hero in heroes:
+                print(f'\t{get_hero_name(hero[0])}: {hero[1]}')
