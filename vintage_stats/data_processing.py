@@ -252,7 +252,7 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
     # For logic behind these numbers, look at get_record_goodness()
     worst_hero_goodness_threshold = -100
     best_hero_goodness_threshold = 100
-    print(f'Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
+    print(f'Nickname\tTotal G\tTotal W\tTotal L\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
           f'\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses'
           f'\tWorst heroes\t Threshold {_hero_count_threshold}')
     for player_report in data_report:
