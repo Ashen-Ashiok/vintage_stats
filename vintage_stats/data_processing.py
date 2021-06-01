@@ -248,7 +248,7 @@ def get_last_matches_map(players_list, days_threshold=60):
     return last_matches_map
 
 
-def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold, heroes_count=3, list_all_heroes=False):
+def format_and_print_winrate_report(data_report, _hero_count_threshold, _heroes_threshold, heroes_count=3, list_all_heroes=False):
     # For logic behind these numbers, look at get_record_goodness()
     worst_hero_goodness_threshold = -100
     best_hero_goodness_threshold = 100
@@ -268,7 +268,7 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
         for best_hero in heroes:
             if count >= heroes_count:
                 break
-            if best_hero[1].get_count() >= _best_heroes_threshold and best_hero[1].get_record_goodness() > best_hero_goodness_threshold:
+            if best_hero[1].get_count() >= _heroes_threshold and best_hero[1].get_record_goodness() > best_hero_goodness_threshold:
                 no_good_heroes_flag = False
                 best_hero_name = get_hero_name(best_hero[0])
                 best_hero_record = best_hero[1]
@@ -287,7 +287,7 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
         for worst_hero in reversed(heroes):
             if count >= heroes_count:
                 break
-            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < worst_hero_goodness_threshold:
+            if worst_hero[1].get_count() >= _heroes_threshold and worst_hero[1].get_record_goodness() < worst_hero_goodness_threshold:
                 no_bad_heroes_flag = False
                 worst_hero_name = get_hero_name(worst_hero[0])
                 worst_hero_record = worst_hero[1]
