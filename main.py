@@ -7,7 +7,7 @@ import vintage_stats.player
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report, request_match_parse
-from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
+from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report
 from vintage_stats.utility import get_last_monday
 
 parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
@@ -25,13 +25,15 @@ parser.add_argument("--date-from", help="Sets cutoff date from for custom report
 
 parser.add_argument("--date-to", help="Sets cutoff date to for custom report. Default is now.", default='now')
 
-parser.add_argument("--HT", help="Threshold for a very played hero. Default is 3.", default='3', type=int)
+parser.add_argument("--HT", help="Threshold for a very played hero. Default is 2.", default='2', type=int)
 
 parser.add_argument("--HCT", help="How many best/worst heroes to show in hero report. Default is 3.", default='3', type=int)
 
 parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
 
 parser.add_argument("-stacks", "--stack-reports", help="Print all duo and trio stack reports", action="store_true")
+
+parser.add_argument("-activity", "--activity-report", help="Print games per week in last 6 months or more", action="store_true")
 
 args = parser.parse_args()
 
@@ -134,5 +136,10 @@ if args.stack_reports:
 
     for stack in (all_duo_stacks_report + all_triple_stacks_report):
         print(f'{stack["stack_name"]}\t{stack["stack_record"].wins}\t{stack["stack_record"].losses}')
+
+if args.activity_report:
+    date_from = datetime.fromisoformat('2019-01-03')
+    date_to = datetime.now()
+    get_player_activity_report(vintage, date_from, date_to)
 
 log_requests_count()

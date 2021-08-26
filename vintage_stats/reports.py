@@ -117,3 +117,34 @@ def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=VE
                 stack_name += ', ' + nick
         full_report.append({"stack_name": stack_name, "stack_record": stack_record})
     return full_report
+
+
+def get_player_activity_report(players_list, _cutoff_date_from=None, _cutoff_date_to=None):
+    cutoff_date_from = datetime.fromisoformat('2019-01-03')
+    cutoff_date_to = datetime.now()
+    if _cutoff_date_from is not None:
+        cutoff_date_from = _cutoff_date_from
+
+    if _cutoff_date_to is not None:
+        cutoff_date_to = _cutoff_date_to
+
+    # We want to have at least 1 day for the API query
+    days_since_cutoff = get_days_since_date(cutoff_date_from)
+    all_reports_list = []
+    for listed_player in players_list:
+        response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
+            listed_player.player_id, days_since_cutoff)
+        matches_response = CacheHandler.cached_opendota_request_get(response_str)
+
+        match_datetime_map = []
+        for match in matches_response.json():
+            match_datetime = datetime.fromtimestamp(match['start_time'])
+            if match_datetime < cutoff_date_from or match_datetime > cutoff_date_to:
+                continue
+            match_datetime_record = {   'match_id': match['match_id'],
+                                        'match_datetime': match_datetime}
+            match_datetime_map.append(match_datetime_record)
+        for match in match_datetime_map:
+            print(f'{match["match_id"]}\t{match["match_datetime"]}')
+        exit()
+
