@@ -6,7 +6,7 @@ import timeago
 import vintage_stats.player
 from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
-    format_and_print_winrate_report, request_match_parse
+    format_and_print_winrate_report, request_match_parse, get_mmr_history_table
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report
 from vintage_stats.utility import get_last_monday
 
@@ -44,6 +44,13 @@ vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': WARELIC_ID, 'nick': 'Warelic'}]
 
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
+
+vintage.get_player('Fazy').set_known_mmr_point(6254246860, 5774)
+vintage.get_player('Grumpy').set_known_mmr_point(6255488353, 3900)
+vintage.get_player('Keskoo').set_known_mmr_point(6254967232, 2870)
+vintage.get_player('Shifty').set_known_mmr_point(6188018367, 4380)
+vintage.get_player('Warelic').set_known_mmr_point(6254551215, 3200)
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -117,6 +124,16 @@ if args.custom_report:
     format_and_print_winrate_report(last_week_winrate_report, player_heroes_threshold, games_for_hero_report, best_worst_heroes_count)
 
 if args.testing_examples:
+    start_date_string = '2021-08-01'
+    end_date_string = ''
+
+    for player in vintage:
+        print(f'\nPRINTING MMR HISTORY FOR PLAYER {player.nick}\n')
+        mmr_history_list = get_mmr_history_table(player, player.known_mmr['match_id'], player.known_mmr['mmr_amount'], start_date_string)
+        for match in mmr_history_list:
+            print(f"Match ID: {match['match_id']}\tMMR after: {match['mmr_after']}\tWon: {match['won']}\tParty: {match['party']}")
+    exit()
+
     fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Shifty')),
                                                 exclusive=False, patch=VERSIONS['7.28b'])

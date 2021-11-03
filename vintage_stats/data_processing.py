@@ -313,3 +313,78 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _heroes_
             heroes = player_report['best_heroes']
             for hero in heroes:
                 print(f'\t{get_hero_name(hero[0])}: {hero[1]}')
+
+
+def get_mmr_history_table(player, match_id_with_known_mmr, known_mmr_amount, _start_date_string=None, _end_date_string=None):
+    start_date = datetime.now() - timedelta(days=2*365)
+    end_date = datetime.now()
+    if _start_date_string:
+        start_date = datetime.fromisoformat(_start_date_string)
+    if _end_date_string:
+        end_date = datetime.fromisoformat(_end_date_string)
+    response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
+        player.player_id, get_days_since_date(start_date))
+    matches_response = CacheHandler.cached_opendota_request_get(response_str)
+
+    match_map = []
+    known_mmr_idx = None
+    used_idx = 0
+
+    for match in matches_response.json():
+        match_datetime = datetime.fromtimestamp(match['start_time'])
+        if match_datetime < start_date:
+            continue
+        if match_datetime > end_date:
+            continue
+
+        match_id = int(match['match_id'])
+        if match['party_size'] is None:
+            was_party = False
+        else:
+            was_party = int(match['party_size']) > 1
+
+        player_won = check_victory(match)
+        mmr_change = get_mmr_change(player_won, was_party)
+        mmr_after = None
+
+        if match_id == match_id_with_known_mmr:
+            mmr_after = known_mmr_amount
+            known_mmr_idx = used_idx
+        match_record = {"match_id": match_id,
+                        "mmr_after": mmr_after,
+                        "won": player_won,
+                        "party": was_party,
+                        "mmr_change": mmr_change,
+                        "start_time": match_datetime,
+                        "start_time_string": match_datetime.strftime('%d-%b-%Y')}
+        used_idx = used_idx + 1
+        match_map.append(match_record)
+
+    if match_map is None or known_mmr_idx is None:
+        return []
+
+    prev_mmr = None
+    prev_change = None
+
+    # Iterate from the known point to the past
+    # Match map from Opendota data is from newest to latest
+    for match_record in match_map[known_mmr_idx:]:
+        if match_record['mmr_after']:
+            prev_mmr = match_record['mmr_after']
+            prev_change = match_record['mmr_change']
+        if prev_mmr and prev_change and not match_record['mmr_after']:
+            match_record['mmr_after'] = prev_mmr - prev_change
+            prev_mmr = prev_mmr - prev_change
+            prev_change = match_record['mmr_change']
+
+    # Iterate from the known point to the present
+    for match_record in reversed(match_map[:known_mmr_idx+1]):
+        if match_record['mmr_after']:
+            prev_mmr = match_record['mmr_after']
+            prev_change = match_record['mmr_change']
+        if prev_mmr and prev_change and not match_record['mmr_after']:
+            match_record['mmr_after'] = prev_mmr + prev_change
+            prev_mmr = prev_mmr + prev_change
+            prev_change = match_record['mmr_change']
+
+    return list(reversed(match_map))
