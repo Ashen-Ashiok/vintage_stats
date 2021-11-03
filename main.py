@@ -93,8 +93,14 @@ if args.since_monday_report:
     format_and_print_winrate_report(last_week_winrate_report, hero_count_threshold, best_heroes_threshold)
 
 if args.custom_report:
-    heroes_threshold = args.HT
+    # Amount of games needed on a hero for it to show up in the Winrate (X+ games) column
+    player_heroes_threshold = args.HT
+    # Amount of heroes to show in the best/worst heroes column
     best_worst_heroes_count = args.HCT
+    # Amount of games needed on a hero for it to show up in the best/worst heroes column (there is also win/loss difference condition though)
+    games_for_hero_report = 2
+
+    print(f'played_heroes_threshold:{player_heroes_threshold}, best_worst_heroes_count: {best_worst_heroes_count}, games_for_hero_report: {games_for_hero_report}')
     date_from = datetime.now() - timedelta(days=28)
     date_to = datetime.now()
     if args.date_to != 'now':
@@ -102,13 +108,13 @@ if args.custom_report:
     if args.date_from != '28d':
         date_from = datetime.fromisoformat(args.date_from)
 
-    last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=heroes_threshold,
+    last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=player_heroes_threshold,
                                                        _cutoff_date_from=date_from, _cutoff_date_to=date_to)
 
     print("Printing Vintage winrate report for time period from {} to {}, hero threshold set to {}.".format(
-        date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), heroes_threshold))
-    games_for_hero_report = 3
-    format_and_print_winrate_report(last_week_winrate_report, heroes_threshold, games_for_hero_report, best_worst_heroes_count)
+        date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), player_heroes_threshold))
+
+    format_and_print_winrate_report(last_week_winrate_report, player_heroes_threshold, games_for_hero_report, best_worst_heroes_count)
 
 if args.testing_examples:
     fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
