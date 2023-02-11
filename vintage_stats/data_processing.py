@@ -249,8 +249,11 @@ def get_last_matches_map(players_list, days_threshold=90):
     return last_matches_map
 
 
-def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_heroes_threshold, heroes_count=3):
-    print(f'Nickname\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
+def format_and_print_winrate_report(data_report, _hero_count_threshold, _heroes_threshold, heroes_count=3, list_all_heroes=False):
+    # For logic behind these numbers, look at get_record_goodness()
+    worst_hero_goodness_threshold = -100
+    best_hero_goodness_threshold = 100
+    print(f'Nickname\tTotal G\tTotal W\tTotal L\tSolo W\tSolo L\tParty W\tParty L\tSolo %'
           f'\tBest hero\tHeroes played\tHeroes played X+ times\tHPX+ wins\tHPX+ losses'
           f'\tWorst heroes\t Threshold {_hero_count_threshold}')
     for player_report in data_report:
@@ -261,11 +264,13 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
         heroes = player_report['best_heroes']
 
         best_heroes_string = 'Not enough games played.'
+        no_good_heroes_flag = True
         count = 0
         for best_hero in heroes:
             if count >= heroes_count:
                 break
-            if best_hero[1].get_count() >= _best_heroes_threshold and best_hero[1].get_record_goodness() >= 104: # TODO MAGIC NUMBER
+            if best_hero[1].get_count() >= _heroes_threshold and best_hero[1].get_record_goodness() > best_hero_goodness_threshold:
+                no_good_heroes_flag = False
                 best_hero_name = get_hero_name(best_hero[0])
                 best_hero_record = best_hero[1]
                 if best_heroes_string == 'Not enough games played.':
@@ -274,13 +279,16 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
                     best_heroes_string += f' & CHAR(10) & "{best_hero_name} ({best_hero_record})"'
                 count += 1
 
+        if no_good_heroes_flag:
+            best_heroes_string = 'No such heroes.'
+
         worst_heroes_string = 'Not enough games played.'
         no_bad_heroes_flag = True
         count = 0
         for worst_hero in reversed(heroes):
             if count >= heroes_count:
                 break
-            if worst_hero[1].get_count() > 1 and worst_hero[1].get_record_goodness() < -101: # TODO MAGIC NUMBER
+            if worst_hero[1].get_count() >= _heroes_threshold and worst_hero[1].get_record_goodness() < worst_hero_goodness_threshold:
                 no_bad_heroes_flag = False
                 worst_hero_name = get_hero_name(worst_hero[0])
                 worst_hero_record = worst_hero[1]
@@ -299,3 +307,85 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _best_he
               f'\t{player_report["party"].wins}\t{player_report["party"].losses}\t{solo_percentage:.2f}%'
               f'\t{best_heroes_string}\t{player_report["hero_count"]}\t{player_report["hero_count_more"]}'
               f'\t{player_report["hero_more_record"].wins}\t{player_report["hero_more_record"].losses}\t{worst_heroes_string}')
+
+    if list_all_heroes:
+        for player_report in data_report:
+            print(f'--- {player_report["nick"]} ---')
+            heroes = player_report['best_heroes']
+            for hero in heroes:
+                print(f'\t{get_hero_name(hero[0])}: {hero[1]}')
+
+
+def get_mmr_history_table(player, match_id_with_known_mmr, known_mmr_amount, _start_date_string=None, _end_date_string=None):
+    start_date = datetime.now() - timedelta(days=2*365)
+    end_date = datetime.now()
+    if _start_date_string:
+        start_date = datetime.fromisoformat(_start_date_string)
+    if _end_date_string:
+        end_date = datetime.fromisoformat(_end_date_string)
+    response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
+        player.player_id, get_days_since_date(start_date))
+    matches_response = CacheHandler.cached_opendota_request_get(response_str)
+
+    match_map = []
+    known_mmr_idx = None
+    used_idx = 0
+
+    for match in matches_response.json():
+        match_datetime = datetime.fromtimestamp(match['start_time'])
+        if match_datetime < start_date:
+            continue
+        if match_datetime > end_date:
+            continue
+
+        match_id = int(match['match_id'])
+        if match['party_size'] is None:
+            was_party = False
+        else:
+            was_party = int(match['party_size']) > 1
+
+        player_won = check_victory(match)
+        mmr_change = get_mmr_change(player_won, was_party)
+        mmr_after = None
+
+        if match_id == match_id_with_known_mmr:
+            mmr_after = known_mmr_amount
+            known_mmr_idx = used_idx
+        match_record = {"match_id": match_id,
+                        "mmr_after": mmr_after,
+                        "won": player_won,
+                        "party": was_party,
+                        "mmr_change": mmr_change,
+                        "start_time": match_datetime,
+                        "start_time_string": match_datetime.strftime('%d-%b-%Y')}
+        used_idx = used_idx + 1
+        match_map.append(match_record)
+
+    if match_map is None or known_mmr_idx is None:
+        return []
+
+    prev_mmr = None
+    prev_change = None
+
+    # Iterate from the known point to the past
+    # Match map from Opendota data is from newest to latest
+    for match_record in match_map[known_mmr_idx:]:
+        if match_record['mmr_after']:
+            prev_mmr = match_record['mmr_after']
+            prev_change = match_record['mmr_change']
+        if prev_mmr and prev_change and not match_record['mmr_after']:
+            match_record['mmr_after'] = prev_mmr - prev_change
+            prev_mmr = prev_mmr - prev_change
+            prev_change = match_record['mmr_change']
+
+    # Iterate from the known point to the present
+    for match_record in reversed(match_map[:known_mmr_idx+1]):
+        if match_record['mmr_after']:
+            prev_mmr = match_record['mmr_after']
+            prev_change = match_record['mmr_change']
+        if prev_mmr and prev_change and not match_record['mmr_after']:
+            match_record['mmr_after'] = prev_mmr + prev_change
+            prev_mmr = prev_mmr + prev_change
+            prev_change = match_record['mmr_change']
+
+    return list(reversed(match_map))

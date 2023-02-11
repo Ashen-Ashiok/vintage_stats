@@ -6,8 +6,8 @@ import timeago
 import vintage_stats.player
 from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
-    format_and_print_winrate_report, request_match_parse
-from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
+    format_and_print_winrate_report, request_match_parse, get_mmr_history_table
+from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report
 from vintage_stats.utility import get_last_monday
 
 parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
@@ -25,9 +25,16 @@ parser.add_argument("--date-from", help="Sets cutoff date from for custom report
 
 parser.add_argument("--date-to", help="Sets cutoff date to for custom report. Default is now.", default='now')
 
-parser.add_argument("--hct", help="Hero count threshold for custom report. Default is 3.", default='3', type=int)
+parser.add_argument("--HT", help="Threshold for a very played hero. Default is 2.", default='2', type=int)
+
+parser.add_argument("--HCT", help="How many best/worst heroes to show in hero report. Default is 3.", default='3', type=int)
 
 parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
+
+parser.add_argument("-stacks", "--stack-reports", help="Print all duo and trio stack reports", action="store_true")
+
+parser.add_argument("-activity", "--activity-report", help="Print games per week in last 6 months or more", action="store_true")
+
 args = parser.parse_args()
 
 vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
@@ -39,6 +46,13 @@ vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': SAUCE_ID, 'nick': 'Sauce'}]
 
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
+
+vintage.get_player('Fazy').set_known_mmr_point(6254246860, 5774)
+vintage.get_player('Grumpy').set_known_mmr_point(6255488353, 3900)
+vintage.get_player('Keskoo').set_known_mmr_point(6254967232, 2870)
+vintage.get_player('Shifty').set_known_mmr_point(6188018367, 4380)
+vintage.get_player('Warelic').set_known_mmr_point(6254551215, 3200)
+
 logging.basicConfig()
 logging.getLogger().setLevel(logging.ERROR)
 
@@ -79,7 +93,7 @@ if args.monitor:
 
 if args.since_monday_report:
     hero_count_threshold = 2
-    best_heroes_threshold = 3
+    best_heroes_threshold = 1
     date_from = get_last_monday()
     date_to = datetime.now()
     last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=hero_count_threshold,
@@ -88,7 +102,14 @@ if args.since_monday_report:
     format_and_print_winrate_report(last_week_winrate_report, hero_count_threshold, best_heroes_threshold)
 
 if args.custom_report:
-    best_heroes_threshold = args.hct
+    # Amount of games needed on a hero for it to show up in the Winrate (X+ games) column
+    player_heroes_threshold = args.HT
+    # Amount of heroes to show in the best/worst heroes column
+    best_worst_heroes_count = args.HCT
+    # Amount of games needed on a hero for it to show up in the best/worst heroes column (there is also win/loss difference condition though)
+    games_for_hero_report = 2
+
+    print(f'played_heroes_threshold:{player_heroes_threshold}, best_worst_heroes_count: {best_worst_heroes_count}, games_for_hero_report: {games_for_hero_report}')
     date_from = datetime.now() - timedelta(days=28)
     date_to = datetime.now()
     if args.date_to != 'now':
@@ -96,18 +117,24 @@ if args.custom_report:
     if args.date_from != '28d':
         date_from = datetime.fromisoformat(args.date_from)
 
-    last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=best_heroes_threshold,
+    last_week_winrate_report = generate_winrate_report(vintage, hero_count_threshold=player_heroes_threshold,
                                                        _cutoff_date_from=date_from, _cutoff_date_to=date_to)
 
     print("Printing Vintage winrate report for time period from {} to {}, hero threshold set to {}.".format(
-        date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), best_heroes_threshold))
-    format_and_print_winrate_report(last_week_winrate_report, best_heroes_threshold, best_heroes_threshold)
+        date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), player_heroes_threshold))
+
+    format_and_print_winrate_report(last_week_winrate_report, player_heroes_threshold, games_for_hero_report, best_worst_heroes_count)
 
 if args.testing_examples:
-    all_duo_stacks_report = get_all_stacks_report(vintage, 2, True, _cutoff_date_from=datetime(2021, 2, 14, 0, 0, 0),
-                                                  _cutoff_date_to=datetime(2021, 3, 14, 23, 59, 59))
-    for stack in all_duo_stacks_report:
-        print('{}\t{}'.format(stack['stack_name'], stack['stack_record']))
+    start_date_string = '2021-08-01'
+    end_date_string = ''
+
+    for player in vintage:
+        print(f'\nPRINTING MMR HISTORY FOR PLAYER {player.nick}\n')
+        mmr_history_list = get_mmr_history_table(player, player.known_mmr['match_id'], player.known_mmr['mmr_amount'], start_date_string)
+        for match in mmr_history_list:
+            print(f"Match ID: {match['match_id']}\tMMR after: {match['mmr_after']}\tWon: {match['won']}\tParty: {match['party']}")
+    exit()
 
     fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Shifty')),
@@ -118,9 +145,26 @@ if args.testing_examples:
                                                  vintage.get_player('Keskoo')),
                                                 exclusive=True, excluded_players=vintage, patch=VERSIONS['7.28b'])
     print(fazy_keskoo_28b_stack_record)
-    all_triple_stacks_report = get_all_stacks_report(vintage, 3, True)
+
+if args.stack_reports:
+    date_from = datetime.now() - timedelta(days=28)
+    date_to = datetime.now()
+    if args.date_to != 'now':
+        date_to = datetime.fromisoformat(args.date_to)
+    if args.date_from != '28d':
+        date_from = datetime.fromisoformat(args.date_from)
+
+    all_duo_stacks_report = get_all_stacks_report(vintage, 2, exclusive=True, _cutoff_date_from=date_from,
+                                                  _cutoff_date_to=date_to)
+    all_triple_stacks_report = get_all_stacks_report(vintage, 3, exclusive=True, _cutoff_date_from=date_from,
+                                                     _cutoff_date_to=date_to)
 
     for stack in (all_duo_stacks_report + all_triple_stacks_report):
-        print('{} – {}'.format(stack['stack_name'], stack['stack_record']))
+        print(f'{stack["stack_name"]}\t{stack["stack_record"].wins}\t{stack["stack_record"].losses}')
+
+if args.activity_report:
+    date_from = datetime.fromisoformat('2019-01-03')
+    date_to = datetime.now()
+    get_player_activity_report(vintage, date_from, date_to)
 
 log_requests_count()
