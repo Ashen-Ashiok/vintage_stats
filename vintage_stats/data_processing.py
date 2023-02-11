@@ -197,7 +197,7 @@ def request_match_parse(match_id):
     return response
 
 
-def get_last_matches_map(players_list, days_threshold=60):
+def get_last_matches_map(players_list, days_threshold=90):
     last_matches_map = {}
     threshold_in_days = days_threshold
     last_matches_map_file_path = Path("lastmatches.json")
@@ -215,7 +215,8 @@ def get_last_matches_map(players_list, days_threshold=60):
         is_initial_run = True
 
     for listed_player in players_list:
-        response_str = 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'.format(
+        #ranked only query: 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'
+        response_str = 'https://api.opendota.com/api/players/{}/matches?significant=0&date={}'.format(
             listed_player.player_id, threshold_in_days)
         matches_response = CacheHandler.cached_opendota_request_get(response_str)
 

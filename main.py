@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import timeago
 
 import vintage_stats.player
-from vintage_stats.constants import FAZY_ID, GRUMPY_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
+from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report, request_match_parse
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report
@@ -34,7 +34,9 @@ vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
                       {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
                       {'pid': KESKOO_ID, 'nick': 'Keskoo'},
                       {'pid': SHIFTY_ID, 'nick': 'Shifty'},
-                      {'pid': WARELIC_ID, 'nick': 'Warelic'}]
+                      {'pid': WARELIC_ID, 'nick': 'Warelic'},
+                      {'pid': GWEN_ID, 'nick': 'Gwen'},
+                      {'pid': SAUCE_ID, 'nick': 'Sauce'}]
 
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
 logging.basicConfig()
