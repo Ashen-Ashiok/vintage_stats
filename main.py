@@ -29,8 +29,6 @@ parser.add_argument("--HT", help="Threshold for a very played hero. Default is 2
 
 parser.add_argument("--HCT", help="How many best/worst heroes to show in hero report. Default is 3.", default='3', type=int)
 
-parser.add_argument("-examples", "--testing-examples", help="EXAMPLES LOL", action="store_true")
-
 parser.add_argument("-stacks", "--stack-reports", help="Print all duo and trio stack reports", action="store_true")
 
 parser.add_argument("-activity", "--activity-report", help="Print games per week in last 6 months or more", action="store_true")
@@ -128,27 +126,6 @@ if args.custom_report:
         date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), player_heroes_threshold))
 
     format_and_print_winrate_report(last_week_winrate_report, player_heroes_threshold, games_for_hero_report, best_worst_heroes_count)
-
-if args.testing_examples:
-    start_date_string = '2021-08-01'
-    end_date_string = ''
-
-    for player in vintage:
-        print(f'\nPRINTING MMR HISTORY FOR PLAYER {player.nick}\n')
-        mmr_history_list = get_mmr_history_table(player, player.known_mmr['match_id'], player.known_mmr['mmr_amount'], start_date_string)
-        for match in mmr_history_list:
-            print(f"Match ID: {match['match_id']}\tMMR after: {match['mmr_after']}\tWon: {match['won']}\tParty: {match['party']}")
-    exit()
-
-    fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
-                                                 vintage.get_player('Shifty')),
-                                                exclusive=False)
-    print(fazy_shifty_28b_stack_record)
-
-    fazy_keskoo_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
-                                                 vintage.get_player('Keskoo')),
-                                                exclusive=True, excluded_players=vintage)
-    print(fazy_keskoo_28b_stack_record)
 
 if args.stack_reports:
     date_from = datetime.now() - timedelta(days=28)
