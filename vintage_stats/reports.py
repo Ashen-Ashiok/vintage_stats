@@ -4,18 +4,14 @@ from datetime import datetime, timedelta
 
 from vintage_stats.data_processing import CacheHandler, check_victory, get_stack_wl
 from vintage_stats.utility import WLRecord, get_days_since_date
-from vintage_stats.constants import VERSIONS
 
 
-def generate_winrate_report(players_list, patch_string=None, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
+def generate_winrate_report(players_list, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
     # Use default report, last week
     cutoff_date_from = datetime.now() - timedelta(days=7)
     cutoff_date_to = datetime.now()
 
-    if patch_string in VERSIONS:
-        cutoff_date_from = VERSIONS[patch_string].release_time
-
-    # Cutoff date from overrides patch
+    # Cutoff date from overrides
     if _cutoff_date_from is not None:
         cutoff_date_from = _cutoff_date_from
 
@@ -24,7 +20,7 @@ def generate_winrate_report(players_list, patch_string=None, hero_count_threshol
 
     # We want to have at least 1 day for the API query
     days_since_cutoff = get_days_since_date(cutoff_date_from)
-    logging.debug('Detected patch with date {}, days ago: {}'.format(cutoff_date_from, days_since_cutoff))
+    logging.debug('Detected date {}, days ago: {}'.format(cutoff_date_from, days_since_cutoff))
 
     all_reports_list = []
     for listed_player in players_list:
@@ -101,13 +97,12 @@ def generate_winrate_report(players_list, patch_string=None, hero_count_threshol
     return all_reports_list
 
 
-def get_all_stacks_report(player_pool, player_count=2, exclusive=False, patch=VERSIONS['7.28b'],
-                          _cutoff_date_from=None, _cutoff_date_to=None):
+def get_all_stacks_report(player_pool, player_count=2, exclusive=False, _cutoff_date_from=None, _cutoff_date_to=None):
     all_possible_stacks = itertools.combinations(player_pool.get_player_list(), player_count)
 
     full_report = []
     for stack in all_possible_stacks:
-        stack_record = get_stack_wl(stack, exclusive, player_pool, patch, _cutoff_date_from, _cutoff_date_to)
+        stack_record = get_stack_wl(stack, exclusive, player_pool, _cutoff_date_from, _cutoff_date_to)
         sorted_stack_nicknames = sorted(player.nick for player in stack)
         stack_name = ''
         for index, nick in enumerate(sorted_stack_nicknames):

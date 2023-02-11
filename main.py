@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import timeago
 
 import vintage_stats.player
-from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, WARELIC_ID, VERSIONS
+from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, SHOTTY_ID, TIARIN_ID, WARELIC_ID
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report, request_match_parse, get_mmr_history_table
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report
@@ -37,13 +37,17 @@ parser.add_argument("-activity", "--activity-report", help="Print games per week
 
 args = parser.parse_args()
 
-vintage_player_map = [{'pid': FAZY_ID, 'nick': 'Fazy'},
-                      {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
-                      {'pid': KESKOO_ID, 'nick': 'Keskoo'},
-                      {'pid': SHIFTY_ID, 'nick': 'Shifty'},
-                      {'pid': WARELIC_ID, 'nick': 'Warelic'},
-                      {'pid': GWEN_ID, 'nick': 'Gwen'},
-                      {'pid': SAUCE_ID, 'nick': 'Sauce'}]
+vintage_player_map = [  
+                        {'pid': SAUCE_ID, 'nick': 'Sauce'},
+                        {'pid': FAZY_ID, 'nick': 'Fazy'},
+                        {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
+                        {'pid': GWEN_ID, 'nick': 'Gwen'},
+                        {'pid': KESKOO_ID, 'nick': 'Keskoo'},
+                        {'pid': SHIFTY_ID, 'nick': 'Shifty'},
+                        {'pid': SHOTTY_ID, 'nick': 'Shotty'},
+                        {'pid': TIARIN_ID, 'nick': 'TiarinHino'},
+                        {'pid': WARELIC_ID, 'nick': 'Warelic'},
+                    ]
 
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
 
@@ -138,12 +142,12 @@ if args.testing_examples:
 
     fazy_shifty_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Shifty')),
-                                                exclusive=False, patch=VERSIONS['7.28b'])
+                                                exclusive=False)
     print(fazy_shifty_28b_stack_record)
 
     fazy_keskoo_28b_stack_record = get_stack_wl((vintage.get_player('Fazy'),
                                                  vintage.get_player('Keskoo')),
-                                                exclusive=True, excluded_players=vintage, patch=VERSIONS['7.28b'])
+                                                exclusive=True, excluded_players=vintage)
     print(fazy_keskoo_28b_stack_record)
 
 if args.stack_reports:

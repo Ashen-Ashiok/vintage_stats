@@ -6,10 +6,9 @@ from datetime import datetime, timedelta
 
 import requests
 
-from vintage_stats.constants import VERSIONS
 from vintage_stats.utility import WLRecord, get_days_since_date
 
-logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.DEBUG)
 
 hero_map = None
 
@@ -114,7 +113,7 @@ def log_requests_count():
         request_log.write('{}'.format(get_requests_count() + requests_used_today))
 
 
-def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=None, _cutoff_date_from=None, _cutoff_date_to=None):
+def get_stack_wl(players_list, exclusive=False, excluded_players=None, _cutoff_date_from=None, _cutoff_date_to=None):
     """Assumes players on players_list are on the same team. Removes players in player_list from excluded_players"""
     if len(players_list) <= 1:
         logging.debug('Stack needs to have at least 2 members.')
@@ -130,9 +129,6 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, patch=Non
     # Default values
     cutoff_date_from = datetime.now() - timedelta(days=28)
     cutoff_date_to = datetime.now()
-
-    if patch in VERSIONS:
-        cutoff_date_from = VERSIONS[patch].release_time
 
     if _cutoff_date_from is not None:
         cutoff_date_from = _cutoff_date_from
