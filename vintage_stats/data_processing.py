@@ -8,7 +8,7 @@ import requests
 
 from vintage_stats.utility import WLRecord, get_days_since_date
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 hero_map = None
 
@@ -193,7 +193,7 @@ def request_match_parse(match_id):
     return response
 
 
-def get_last_matches_map(players_list, days_threshold=90):
+def get_last_matches_map(players_list, days_threshold=30):
     last_matches_map = {}
     threshold_in_days = days_threshold
     last_matches_map_file_path = Path("lastmatches.json")
@@ -215,7 +215,11 @@ def get_last_matches_map(players_list, days_threshold=90):
         response_str = 'https://api.opendota.com/api/players/{}/matches?significant=0&date={}'.format(
             listed_player.player_id, threshold_in_days)
         matches_response = CacheHandler.cached_opendota_request_get(response_str)
-
+    
+        if not matches_response:
+            logging.error(f"Missing matches response for player {listed_player.nick}. Skipped.")
+            continue
+        
         for match in matches_response.json()[:1]:
             kills = match['kills']
             deaths = match['deaths']

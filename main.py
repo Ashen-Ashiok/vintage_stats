@@ -58,7 +58,7 @@ vintage.get_player('Shifty').set_known_mmr_point(6188018367, 4380)
 vintage.get_player('Warelic').set_known_mmr_point(6254551215, 3200)
 
 logging.basicConfig()
-logging.getLogger().setLevel(logging.ERROR)
+logging.getLogger().setLevel(logging.INFO)
 
 if args.monitor:
     post_only_new = True
@@ -85,7 +85,7 @@ if args.monitor:
         if not match_data.is_new and post_only_new:
             continue
         new_string = '** NEW!**' if match_data.is_new else ''
-        print('**{}** played {} game as **{}**, went {}-{}-{} and **{}**. The game started {}. Links:\n'
+        print('**{}** played a {} game as **{}**, went {}-{}-{} and **{}**. The game started {}. Links:\n'
               '<https://www.stratz.com/matches/{}>, <https://www.opendota.com/matches/{}>'.format(
                 player, solo_string, match_data.hero_name, match_data.kills,
                 match_data.deaths, match_data.assists, result_string, time_ago_string,
