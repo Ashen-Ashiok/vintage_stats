@@ -182,9 +182,9 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, _cutoff_d
 
 
 def request_match_parse(match_id):
-    request_log_path = Path("/home/vintage/parse_requested.log")
+    request_log_path = Path("parse_requested.log")
     if not request_log_path.exists():
-        with open('/home/vintage/parse_requested.log', 'w'):
+        with open('parse_requested.log', 'w'):
             pass
     with open('parse_requested.log', 'a') as parse_log:
         response_str = f'https://api.opendota.com/api/request/{match_id}'
@@ -196,17 +196,18 @@ def request_match_parse(match_id):
 def get_last_matches_map(players_list, days_threshold=30):
     last_matches_map = {}
     threshold_in_days = days_threshold
-    last_matches_map_file_path = Path("/home/vintage/lastmatches.json")
+    last_matches_map_file_path = Path("lastmatches.json")
     MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
                                          'assists', 'party_size', 'start_time', 'is_new'])
 
     is_initial_run = False
     if last_matches_map_file_path.exists():
-        with open("/home/vintage/lastmatches.json") as last_matches_map_file:
+        with open("lastmatches.json") as last_matches_map_file:
             last_matches_map_old = json.load(last_matches_map_file)
             for listed_player_nick in last_matches_map_old:
-                match_data = MatchData(**(last_matches_map_old[listed_player_nick]))
-                last_matches_map_old[listed_player_nick] = match_data
+                if last_matches_map_old[listed_player_nick]:
+                    match_data = MatchData(**(last_matches_map_old[listed_player_nick]))
+                    last_matches_map_old[listed_player_nick] = match_data
     else:
         is_initial_run = True
 
@@ -219,19 +220,31 @@ def get_last_matches_map(players_list, days_threshold=30):
         if not matches_response:
             logging.error(f"Missing matches response for player {listed_player.nick}. Skipped.")
             continue
-        
-        for match in matches_response.json()[:1]:
-            kills = match['kills']
-            deaths = match['deaths']
-            assists = match['assists']
-            party_size = match['party_size']
-            match_id = match['match_id']
-            player_won = check_victory(match)
-            player_hero = get_hero_name(match['hero_id'])
-            time = match['start_time']
-            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time, is_new=not is_initial_run)
+
+        logging.debug(listed_player)
+        if matches_response.json()[:1]:
+            last_match = matches_response.json()[:1][0]
+            kills = last_match['kills']
+            deaths = last_match['deaths']
+            assists = last_match['assists']
+            party_size = last_match['party_size']
+            match_id = last_match['match_id']
+            player_won = check_victory(last_match)
+            player_hero = get_hero_name(last_match['hero_id'])
+            time = last_match['start_time']
+
+            is_new = False
+            if is_initial_run:
+                is_new = True
+            else:
+                if listed_player.nick in last_matches_map_old \
+                        and last_match['match_id'] != last_matches_map_old[listed_player.nick].match_ID:
+                    is_new = True
+
+            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time, is_new=is_new)
             match_data_dict = match_data._asdict()
             last_matches_map[listed_player.nick] = match_data_dict
+
     json.dump(last_matches_map, open(last_matches_map_file_path, "w"), indent=4)
 
     for listed_player_nick in last_matches_map:
