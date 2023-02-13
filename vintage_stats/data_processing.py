@@ -182,9 +182,9 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, _cutoff_d
 
 
 def request_match_parse(match_id):
-    request_log_path = Path("parse_requested.log")
+    request_log_path = Path("/home/vintage/parse_requested.log")
     if not request_log_path.exists():
-        with open('parse_requested.log', 'w'):
+        with open('/home/vintage/parse_requested.log', 'w'):
             pass
     with open('parse_requested.log', 'a') as parse_log:
         response_str = f'https://api.opendota.com/api/request/{match_id}'
@@ -196,13 +196,13 @@ def request_match_parse(match_id):
 def get_last_matches_map(players_list, days_threshold=30):
     last_matches_map = {}
     threshold_in_days = days_threshold
-    last_matches_map_file_path = Path("lastmatches.json")
+    last_matches_map_file_path = Path("/home/vintage/lastmatches.json")
     MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
                                          'assists', 'party_size', 'start_time', 'is_new'])
 
     is_initial_run = False
     if last_matches_map_file_path.exists():
-        with open("lastmatches.json") as last_matches_map_file:
+        with open("/home/vintage/lastmatches.json") as last_matches_map_file:
             last_matches_map_old = json.load(last_matches_map_file)
             for listed_player_nick in last_matches_map_old:
                 match_data = MatchData(**(last_matches_map_old[listed_player_nick]))
@@ -240,8 +240,16 @@ def get_last_matches_map(players_list, days_threshold=30):
 
     if not is_initial_run:
         for player in last_matches_map:
-            current_match_ID = last_matches_map[player].match_ID
-            previous_match_ID = last_matches_map_old[player].match_ID
+            try:
+                current_match_ID = last_matches_map[player].match_ID
+            except KeyError:
+                logging.error(f"Current match missing for {player}, skipping")
+                continue
+            try:
+                previous_match_ID = last_matches_map_old[player].match_ID
+            except KeyError:
+                logging.error(f"Previous match missing for {player}, skipping")
+                continue
             if current_match_ID == previous_match_ID:
                 last_matches_map[listed_player_nick] = match_data
                 last_matches_map[player] = last_matches_map[player]._replace(is_new=False)

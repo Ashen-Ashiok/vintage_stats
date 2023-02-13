@@ -49,11 +49,11 @@ vintage_player_map = [
 
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
 
-vintage.get_player('Fazy').set_known_mmr_point(6254246860, 5774)
-vintage.get_player('Grumpy').set_known_mmr_point(6255488353, 3900)
-vintage.get_player('Keskoo').set_known_mmr_point(6254967232, 2870)
-vintage.get_player('Shifty').set_known_mmr_point(6188018367, 4380)
-vintage.get_player('Warelic').set_known_mmr_point(6254551215, 3200)
+#vintage.get_player('Fazy').set_known_mmr_point(6254246860, 5774)
+#vintage.get_player('Grumpy').set_known_mmr_point(6255488353, 3900)
+#vintage.get_player('Keskoo').set_known_mmr_point(6254967232, 2870)
+#vintage.get_player('Shifty').set_known_mmr_point(6188018367, 4380)
+#vintage.get_player('Warelic').set_known_mmr_point(6254551215, 3200)
 
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
@@ -69,7 +69,6 @@ if args.monitor:
     set_for_parse = set()
 
     for player in last_matches_map:
-
         match_data = last_matches_map[player]
         result_string = 'WON' if match_data.player_won else 'LOST'
         try:
@@ -81,8 +80,7 @@ if args.monitor:
         minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
         time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played, datetime.now())
         if not match_data.is_new and post_only_new:
-            continue
-        new_string = '** NEW!**' if match_data.is_new else ''
+            continue       
         print('**{}** played a {} game as **{}**, went {}-{}-{} and **{}**. The game started {}. Links:\n'
               '<https://www.stratz.com/matches/{}>, <https://www.opendota.com/matches/{}>'.format(
                 player, solo_string, match_data.hero_name, match_data.kills,
