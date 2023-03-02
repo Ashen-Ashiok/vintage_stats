@@ -4,10 +4,12 @@ from datetime import datetime, timedelta
 import timeago
 
 import vintage_stats.player
-from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, SHOTTY_ID, TIARIN_ID, WARELIC_ID
+from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, SHOTTY_ID, TIARIN_ID, \
+    WARELIC_ID, GAME_MODES
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report, request_match_parse, get_mmr_history_table
-from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report
+from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report, \
+    generate_last_week_report
 from vintage_stats.utility import get_last_monday
 
 parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
@@ -20,6 +22,8 @@ parser.add_argument("-report", "--custom-report", help="Print previous month (TO
                     action="store_true")
 
 parser.add_argument("-monitor", "--monitor", help="")
+
+parser.add_argument("-w", "--simple_last_week", action="store_true")
 
 parser.add_argument("--date-from", help="Sets cutoff date from for custom report. Default is 28 days ago.", default='28d')
 
@@ -77,19 +81,31 @@ if args.monitor:
             solo_string = 'solo'
         time_played = datetime.fromtimestamp(match_data.start_time)
         time_string = time_played.strftime('%a %H:%M')
+        print(match_data.game_mode)
+        game_mode_string = GAME_MODES.get(str(match_data.game_mode), "Unknown Mode")
         minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
-        time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played, datetime.now())
+        time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
+                                                                                                        datetime.now())
         if not match_data.is_new and post_only_new:
             continue       
-        print('**{}** played a {} game as **{}**, went {}-{}-{} and **{}**. The game started {}. Links:\n'
-              '<https://www.stratz.com/matches/{}>, <https://www.opendota.com/matches/{}>'.format(
-                player, solo_string, match_data.hero_name, match_data.kills,
-                match_data.deaths, match_data.assists, result_string, time_ago_string,
-                match_data.match_ID, match_data.match_ID))
+        print(f'**{player}** played a {solo_string} {game_mode_string} game as **{match_data.hero_name}**, '
+              f'went {match_data.kills}-{match_data.deaths}-{match_data.assists} and **{result_string}**.'
+              f' The game started {time_ago_string}. Links:\n'
+              f'<https://www.stratz.com/matches/{match_data.match_ID}>,'
+              f' <https://www.opendota.com/matches/{match_data.match_ID}>')
         set_for_parse.add(match_data.match_ID)
 
     for match_id in set_for_parse:
         request_match_parse(match_id).json()
+
+if args.simple_last_week:
+    last_week_simple_report = generate_last_week_report(vintage)
+    for player in last_week_simple_report:
+        if player['total'].get_count() == 0:
+            continue
+        print(f"**{player['nick']}** played {player['total'].get_count()} games and went **{player['total']}**.\n"
+              f"{player['solo'].get_count()} were solo games while {player['party'].get_count()} were party games.")
+
 
 if args.since_monday_report:
     hero_count_threshold = 2

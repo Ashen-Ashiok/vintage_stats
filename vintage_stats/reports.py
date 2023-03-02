@@ -6,6 +6,45 @@ from vintage_stats.data_processing import CacheHandler, check_victory, get_stack
 from vintage_stats.utility import WLRecord, get_days_since_date
 
 
+def generate_last_week_report(players_list):
+    all_reports_list = []
+    for listed_player in players_list:
+        response_str = f"https://api.opendota.com/api/players/{listed_player.player_id}/matches?significant=0&date=7"
+        matches_response = CacheHandler.cached_opendota_request_get(response_str)
+
+        solo_wins = solo_losses = party_wins = party_losses = 0
+        for match in matches_response.json():
+            player_won = check_victory(match)
+
+            if player_won:
+                if not match['party_size']:
+                    solo_wins = solo_wins + 1
+                else:
+                    if int(match['party_size']) > 1:
+                        party_wins = party_wins + 1
+                    else:
+                        solo_wins = solo_wins + 1
+            else:
+                if not match['party_size']:
+                    solo_losses = solo_losses + 1
+                else:
+                    if int(match['party_size']) > 1:
+                        party_losses = party_losses + 1
+                    else:
+                        solo_losses = solo_losses + 1
+
+        solo_record = WLRecord(solo_wins, solo_losses)
+        party_record = WLRecord(party_wins, party_losses)
+
+        player_record = {'nick': listed_player.nick,
+                         'total': solo_record + party_record,
+                         'solo': solo_record,
+                         'party': party_record}
+        all_reports_list.append(player_record)
+
+    return all_reports_list
+
+
 def generate_winrate_report(players_list, hero_count_threshold=3, _cutoff_date_from=None, _cutoff_date_to=None):
     # Use default report, last week
     cutoff_date_from = datetime.now() - timedelta(days=7)

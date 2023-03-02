@@ -198,7 +198,7 @@ def get_last_matches_map(players_list, days_threshold=30):
     threshold_in_days = days_threshold
     last_matches_map_file_path = Path("lastmatches.json")
     MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
-                                         'assists', 'party_size', 'start_time', 'is_new'])
+                                         'assists', 'party_size', 'start_time', 'is_new', 'game_mode'])
 
     is_initial_run = False
     if last_matches_map_file_path.exists():
@@ -212,7 +212,6 @@ def get_last_matches_map(players_list, days_threshold=30):
         is_initial_run = True
 
     for listed_player in players_list:
-        #ranked only query: 'https://api.opendota.com/api/players/{}/matches?lobby_type=7&date={}'
         response_str = 'https://api.opendota.com/api/players/{}/matches?significant=0&date={}'.format(
             listed_player.player_id, threshold_in_days)
         matches_response = CacheHandler.cached_opendota_request_get(response_str)
@@ -224,6 +223,7 @@ def get_last_matches_map(players_list, days_threshold=30):
         logging.debug(listed_player)
         if matches_response.json()[:1]:
             last_match = matches_response.json()[:1][0]
+            game_mode = last_match['game_mode']
             kills = last_match['kills']
             deaths = last_match['deaths']
             assists = last_match['assists']
@@ -241,7 +241,8 @@ def get_last_matches_map(players_list, days_threshold=30):
                         and last_match['match_id'] != last_matches_map_old[listed_player.nick].match_ID:
                     is_new = True
 
-            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time, is_new=is_new)
+            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time,
+                                   game_mode=game_mode, is_new=is_new)
             match_data_dict = match_data._asdict()
             last_matches_map[listed_player.nick] = match_data_dict
 
