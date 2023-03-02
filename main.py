@@ -40,7 +40,7 @@ parser.add_argument("-activity", "--activity-report", help="Print games per week
 args = parser.parse_args()
 
 vintage_player_map = [  
-                        {'pid': SAUCE_ID, 'nick': 'Sauce'},
+                        {'pid': SAUCE_ID, 'nick': 'Boneal'},
                         {'pid': FAZY_ID, 'nick': 'Fazy'},
                         {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
                         {'pid': GWEN_ID, 'nick': 'Gwen'},
@@ -81,7 +81,6 @@ if args.monitor:
             solo_string = 'solo'
         time_played = datetime.fromtimestamp(match_data.start_time)
         time_string = time_played.strftime('%a %H:%M')
-        print(match_data.game_mode)
         game_mode_string = GAME_MODES.get(str(match_data.game_mode), "Unknown Mode")
         minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
         time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
