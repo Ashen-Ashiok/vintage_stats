@@ -42,7 +42,7 @@ class PlayerPool:
         return list(self.player_dict.values())
 
     def __iter__(self):
-        for item in sorted(self.player_dict.values(),key=lambda player: player.nick):
+        for item in sorted(self.player_dict.values(), key=lambda player: player.nick):
             yield item
 
     def remove(self, player):
