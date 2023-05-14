@@ -14,7 +14,10 @@ def generate_last_week_report(players_list):
 
         solo_wins = solo_losses = party_wins = party_losses = 0
         for match in matches_response.json():
-            player_won = check_victory(match)
+            try:
+                player_won = check_victory(match)
+            except TypeError as err:
+                print(f"{err}, match_data: {match}")
 
             if player_won:
                 if not match['party_size']:
