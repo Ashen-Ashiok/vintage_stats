@@ -196,6 +196,7 @@ def request_match_parse(match_id):
 def get_last_matches_map(players_list, days_threshold=7):
     last_matches_map = {}
     last_matches_map_file_path = Path("lastmatches.json")
+    last_matches_map_file_path_debug = Path("debug")
     MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
                                          'assists', 'party_size', 'start_time', 'is_new', 'game_mode'])
 
@@ -251,6 +252,8 @@ def get_last_matches_map(players_list, days_threshold=7):
         match_data = MatchData(**(last_matches_map[listed_player_nick]))
         last_matches_map[listed_player_nick] = match_data
 
+    logging.info(f"Is_new: {is_new}, is_initial_run: {is_initial_run}")
+
     if not is_initial_run:
         for player in last_matches_map:
             try:
@@ -261,7 +264,8 @@ def get_last_matches_map(players_list, days_threshold=7):
             try:
                 previous_match_ID = last_matches_map_old[player].match_ID
             except KeyError:
-                logging.error(f"Previous match missing for {player}, skipping")
+                logging.error(f"Previous match missing for {player}, dumping map to debug/lastmatches_{int(time.time())}.json")
+                json.dump(last_matches_map, open(last_matches_map_file_path_debug / f"lastmatches_{int(time.time())}.json", "w"), indent=4)
                 continue
             if current_match_ID == previous_match_ID:
                 last_matches_map[listed_player_nick] = match_data
