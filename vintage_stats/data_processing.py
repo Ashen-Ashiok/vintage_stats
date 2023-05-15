@@ -1,5 +1,8 @@
 import json
 import logging
+import filecmp
+import os
+import time
 from collections import namedtuple
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -196,6 +199,7 @@ def request_match_parse(match_id):
 def get_last_matches_map(players_list, days_threshold=7):
     last_matches_map = {}
     last_matches_map_file_path = Path("lastmatches.json")
+    last_matches_map_file_path_temp = Path("lastmatches_new.json")
     last_matches_map_file_path_debug = Path("debug")
     MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
                                          'assists', 'party_size', 'start_time', 'is_new', 'game_mode'])
@@ -217,7 +221,9 @@ def get_last_matches_map(players_list, days_threshold=7):
         matches_response = CacheHandler.cached_opendota_request_get(response_str)
     
         if not matches_response:
-            logging.error(f"Missing matches response for player {listed_player.nick}. Skipped.")
+            logging.error(f"Missing matches response for player {listed_player.nick}. Replaced with previous data.")
+            match_data_old = MatchData(**(last_matches_map_old[listed_player.nick]))
+            last_matches_map[listed_player.nick] = match_data_old
             continue
 
         logging.debug(listed_player)
@@ -231,7 +237,7 @@ def get_last_matches_map(players_list, days_threshold=7):
             match_id = last_match['match_id']
             player_won = check_victory(last_match)
             player_hero = get_hero_name(last_match['hero_id'])
-            time = last_match['start_time']
+            start_time = last_match['start_time']
 
             is_new = False
             if is_initial_run:
@@ -241,12 +247,22 @@ def get_last_matches_map(players_list, days_threshold=7):
                         and last_match['match_id'] != last_matches_map_old[listed_player.nick].match_ID:
                     is_new = True
 
-            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, time,
+            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, start_time,
                                    game_mode=game_mode, is_new=is_new)
             match_data_dict = match_data._asdict()
             last_matches_map[listed_player.nick] = match_data_dict
 
-    json.dump(last_matches_map, open(last_matches_map_file_path, "w"), indent=4)
+    json.dump(last_matches_map, open(last_matches_map_file_path_temp, "w"), indent=4)
+    check = filecmp.cmp('lastmatches.json', 'lastmatches_new.json')
+    if not check:
+        logging.info(f"Lastmatches files differed, saving a copy of the old.")
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        os.rename('lastmatches.json', f'lastmatches_{timestamp}.json')
+        os.rename('lastmatches_new.json', 'lastmatches.json')
+    else:
+        logging.info(f"Lastmatches files were identical, keeping only one.")
+        os.remove("lastmatches.json")
+        os.rename('lastmatches_new.json', 'lastmatches.json')
 
     for listed_player_nick in last_matches_map:
         match_data = MatchData(**(last_matches_map[listed_player_nick]))
@@ -256,16 +272,14 @@ def get_last_matches_map(players_list, days_threshold=7):
 
     if not is_initial_run:
         for player in last_matches_map:
-            try:
-                current_match_ID = last_matches_map[player].match_ID
-            except KeyError:
-                logging.error(f"Current match missing for {player}, skipping")
-                continue
+            current_match_ID = last_matches_map[player].match_ID
             try:
                 previous_match_ID = last_matches_map_old[player].match_ID
             except KeyError:
                 logging.error(f"Previous match missing for {player}, dumping map to debug/lastmatches_{int(time.time())}.json")
-                json.dump(last_matches_map, open(last_matches_map_file_path_debug / f"lastmatches_{int(time.time())}.json", "w"), indent=4)
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                json.dump(last_matches_map, open(last_matches_map_file_path_debug / f"lastmatches_{timestamp}_error_new.json", "w"), indent=4)
+                json.dump(last_matches_map_old, open(last_matches_map_file_path_debug / f"lastmatches_{timestamp}_error_old.json", "w"), indent=4)
                 continue
             if current_match_ID == previous_match_ID:
                 last_matches_map[listed_player_nick] = match_data

@@ -74,11 +74,19 @@ if args.monitor:
 
     for player in last_matches_map:
         match_data = last_matches_map[player]
+        if match_data.is_new:
+            set_for_parse.add(match_data.match_ID)
+
+    for match_id in set_for_parse:
+        request_match_parse(match_id).json()
+
+    for player in last_matches_map:
+        match_data = last_matches_map[player]
         result_string = 'WON' if match_data.player_won else 'LOST'
         try:
-            solo_string = 'party' if match_data.party_size > 1 else 'solo'
+            solo_string = 'party ' if match_data.party_size > 1 else 'solo '
         except TypeError:
-            solo_string = 'solo'
+            solo_string = ''
         time_played = datetime.fromtimestamp(match_data.start_time)
         time_string = time_played.strftime('%a %H:%M')
         game_mode_string = GAME_MODES.get(str(match_data.game_mode), "Unknown Mode")
@@ -87,15 +95,13 @@ if args.monitor:
                                                                                                         datetime.now())
         if not match_data.is_new and post_only_new:
             continue       
-        print(f'**{player}** played a {solo_string} {game_mode_string} game as **{match_data.hero_name}**, '
+        print(f'**{player}** played a {solo_string}{game_mode_string} game as **{match_data.hero_name}**, '
               f'went {match_data.kills}-{match_data.deaths}-{match_data.assists} and **{result_string}**.'
               f' The game started {time_ago_string}. Links:\n'
               f'<https://www.stratz.com/matches/{match_data.match_ID}>,'
               f' <https://www.opendota.com/matches/{match_data.match_ID}>')
-        set_for_parse.add(match_data.match_ID)
 
-    for match_id in set_for_parse:
-        request_match_parse(match_id).json()
+
 
 if args.simple_last_week:
     last_week_simple_report = generate_last_week_report(vintage)
