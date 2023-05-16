@@ -3,9 +3,11 @@ import logging
 import filecmp
 import os
 import time
+import pickle
 from collections import namedtuple
 from pathlib import Path
 from datetime import datetime, timedelta
+from pprint import pformat
 
 import requests
 
@@ -51,6 +53,13 @@ class CacheHandler:
             CacheHandler.requests_count += 1
             CacheHandler.response_cache[response_str] = response
             return response
+
+    @staticmethod
+    def opendota_request_post(response_str):
+        response = requests.post(response_str)
+        logging.debug('Uncached req: {}'.format(response_str))
+        CacheHandler.requests_count += 1
+        return response
 
 
 def check_victory(player_match_data):
@@ -192,14 +201,36 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, _cutoff_d
 
 
 def request_match_parse(match_id):
+    logging.info(f"\trequest_match_parse function for {match_id}")
+    requested_set_file_path = Path("parse_requested.pickle")
+    parse_requested_set = set()
+
+    if requested_set_file_path.exists():
+        logging.info("\trequest_match_parse pickle file exists")
+        with requested_set_file_path.open(mode="rb") as requested_set_file:
+            parse_requested_set = pickle.load(requested_set_file)
+            logging.info("\trequest_match_parse pickle file loaded")
+    
+    if match_id in parse_requested_set:
+        logging.info("\trequest_match_parse match was already requested")
+
+    parse_requested_set.add(match_id)
+    sorted_set = list(parse_requested_set)
+    logging.info(f"Sorted requested set: {pformat(sorted(parse_requested_set))}")
+
+    with requested_set_file_path.open(mode="wb") as requested_set_file:
+        pickle.dump(parse_requested_set, requested_set_file)
+        logging.info("\trequest_match_parse saved to pickle file")
+
     request_log_path = Path("parse_requested.log")
     if not request_log_path.exists():
         with open('parse_requested.log', 'w'):
             pass
     with open('parse_requested.log', 'a') as parse_log:
         response_str = f'https://api.opendota.com/api/request/{match_id}'
-        response = CacheHandler.cached_opendota_request_post(response_str)
-        parse_log.write(f'\nRequest: {response_str}\nResponse: {response.json()}')
+        response = CacheHandler.opendota_request_post(response_str)
+        if response:
+            parse_log.write(f'\nRequest: {response_str}\nResponse: {response.json()}')
     return response
 
 

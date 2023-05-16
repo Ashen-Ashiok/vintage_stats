@@ -69,6 +69,7 @@ def main():
 
         for player in vintage_test:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
+            # todo only dump recent matches if it is different
             player_recent_matches_path = match_history_dir_path / f"{player.player_id}_recent_{timestamp}.json"
 
             logging.info(f"Getting recentMatches for player {player}.")
