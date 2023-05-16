@@ -22,6 +22,13 @@ class CacheHandler:
     hero_map = None
 
     @staticmethod
+    def opendota_request_get(response_str):
+        response = requests.get(response_str)
+        logging.debug('Uncached req: {}'.format(response_str))
+        CacheHandler.requests_count += 1
+        return response
+
+    @staticmethod
     def cached_opendota_request_get(response_str):
         if response_str in CacheHandler.response_cache:
             logging.debug('Cached used for req: {}'.format(response_str))
@@ -218,7 +225,7 @@ def get_last_matches_map(players_list, days_threshold=7):
     for listed_player in players_list:
         response_str = 'https://api.opendota.com/api/players/{}/matches?significant=0&date={}'.format(
             listed_player.player_id, days_threshold)
-        matches_response = CacheHandler.cached_opendota_request_get(response_str)
+        matches_response = CacheHandler.opendota_request_get(response_str)
     
         if not matches_response:
             logging.error(f"Missing matches response for player {listed_player.nick}. Replaced with previous data.")
@@ -428,3 +435,60 @@ def get_mmr_history_table(player, match_id_with_known_mmr, known_mmr_amount, _st
             prev_change = match_record['mmr_change']
 
     return list(reversed(match_map))
+
+
+def get_player_match_history(player):
+    logging.info(f"get_player_match_history for {player}")
+    match_history_dir_path = Path("match_histories")
+    player_history_path = match_history_dir_path / f"{player.player_id}_history.json"
+
+    if player_history_path.exists():
+        with player_history_path.open(mode="r+") as player_history_file:
+            logging.info(f"get_player_match_history file exists for {player}")
+            player_history = None
+            try:
+                player_history = json.load(player_history_file)
+            except Exception as e:
+                logging.error(f"get_player_match_history file loading error: {e}")
+
+            if not player_history or len(player_history) < 10:
+                response_str = f"https://api.opendota.com/api/players/{player.player_id}/matches?significant=0&date=60"
+                player_history = CacheHandler.opendota_request_get(response_str).json()
+                # trim to 40 games
+                player_history = player_history[:40]
+                json.dump(player_history, player_history_file, indent=4)
+
+            return player_history
+    else:
+        with player_history_path.open(mode="w") as player_history_file:
+            response_str = f"https://api.opendota.com/api/players/{player.player_id}/matches?significant=0&date=60"
+            player_history = CacheHandler.opendota_request_get(response_str).json()
+            # trim to 40 games
+            player_history = player_history[:40]
+            json.dump(player_history, player_history_file, indent=4)
+            return player_history
+
+
+def save_player_match_history(player, match_history):
+    logging.info(f"save_player_match_history for {player}")
+    match_history_dir_path = Path("match_histories")
+    player_history_path = match_history_dir_path / f"{player.player_id}_history.json"
+    player_history_path_old = match_history_dir_path / f"{player.player_id}_history_old.json"
+
+    if player_history_path.exists():
+        os.rename(player_history_path, player_history_path_old)
+
+    with player_history_path.open(mode="w") as player_history_file:
+        player_history = match_history
+        # trim to 40 games
+        player_history = player_history[:40]
+        json.dump(player_history, player_history_file, indent=4)
+        logging.info(f"save_player_match_history succesful for {player}")
+        if player_history_path_old.exists():
+            check = filecmp.cmp(player_history_path, player_history_path_old)
+            if not check:
+                logging.info(f"Match history for player {player} differed, saving a copy.")
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                os.rename(player_history_path_old, f"{player.player_id}_history_old_{timestamp}.json")
+        return True
+
