@@ -70,6 +70,7 @@ def main():
         for player in vintage_test:
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             player_recent_matches_path = match_history_dir_path / f"{player.player_id}_recent_{timestamp}.json"
+
             logging.info(f"Getting recentMatches for player {player}.")
             with player_recent_matches_path.open(mode="w", encoding="utf-8") as player_recent_matches_file:
                 response_str = f"https://api.opendota.com/api/players/{player.player_id}/recentMatches"
@@ -89,34 +90,36 @@ def main():
                 logging.info(f"Getting matchHistory for player {player}.")
                 match_history = get_player_match_history(player)
 
-                # print("\nMATCH HISTORY (LOADED DATA)")
-                for idx, match in enumerate(match_history):
-                    print(f"{idx}: match_ID: {match['match_id']}, hero: {get_hero_name(match['hero_id'])}, is_parsed: "
-                          f"{match['version']}")
-
-                # print("\nNEWLY SCANNED RECENT MATCHES")
                 meet_index = 0
                 for idx, match in enumerate(recent_matches):
-                    print(f"{idx}: match_ID: {match['match_id']}, hero: {get_hero_name(match['hero_id'])}, is_parsed: "
-                          f"{match['version']}")
                     if match['match_id'] == match_history[0]['match_id']:
                         meet_index = idx
 
-                new_matches = [x['match_id'] for x in recent_matches[:meet_index]]
-                print(f"\nFound the sync between history and new recent matches, it is match with ID: "
-                      f"{recent_matches[meet_index]['match_id']}\n"
-                      f"New matches are: {new_matches}")
+                if meet_index:
+                    new_matches = [x['match_id'] for x in recent_matches[:meet_index]]
+                    logging.info(f"\nFound the sync between history and new recent matches, it is match with ID: "
+                          f"{recent_matches[meet_index]['match_id']}\n"
+                          f"New matches are: {new_matches}")
 
-                for item in recent_matches[:meet_index]:
-                    match_history.insert(0, item)
+                    for item in recent_matches[:meet_index]:
+                        logging.info(f"Adding match with ID: {item['match_id']} to matchHistory of player {player}.")
+                        match_history.insert(0, item)
 
+                logging.info(f"\nRequesting matches to be parsed for player {player}.")
+
+                request_count = 0
                 for item in match_history:
                     if not item['version']:
                         item['version'] = 'requested'
                         request_match_parse(item['match_id'])
+                        request_count += 1
+                
+                logging.info(f"Request count: {request_count}, meet_index: {meet_index}")
 
-                save_player_match_history(player, match_history)
-
+                if request_count or meet_index:
+                    logging.info(f"Saving extended matchHistory for player {player}.")
+                    save_player_match_history(player, match_history)
+                    
         # iterate through recentMatches matchID list, compare to the newest match in MatchHistory
         # when you find it, take any newer matches and append them to MatchHistory and:
             # check if they are parsed:
@@ -129,6 +132,7 @@ def main():
             # figure out if multiple players were in the same match
             # create postings, send to bot
         # log request count
+        logging.info("END OF FUNCTION")
         return
 
     if args.monitor:

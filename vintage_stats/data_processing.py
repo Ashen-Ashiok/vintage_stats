@@ -441,30 +441,43 @@ def get_player_match_history(player):
     logging.info(f"get_player_match_history for {player}")
     match_history_dir_path = Path("match_histories")
     player_history_path = match_history_dir_path / f"{player.player_id}_history.json"
+    player_history = None
 
     if player_history_path.exists():
-        with player_history_path.open(mode="r+") as player_history_file:
+        history_file_error = False
+        with player_history_path.open(mode="r") as player_history_file:
             logging.info(f"get_player_match_history file exists for {player}")
-            player_history = None
+            
             try:
                 player_history = json.load(player_history_file)
             except Exception as e:
                 logging.error(f"get_player_match_history file loading error: {e}")
+                history_file_error = True
 
-            if not player_history or len(player_history) < 10:
+            if not player_history or not isinstance(player_history, list) or not player_history[0]['match_id']:
+                history_file_error = True
+        
+        if history_file_error:
+            logging.error(f"get_player_match_history existing file is invalid for {player}")
+
+            with player_history_path.open(mode="w") as player_history_file:
+                player_history_file.truncate(0)
                 response_str = f"https://api.opendota.com/api/players/{player.player_id}/matches?significant=0&date=60"
                 player_history = CacheHandler.opendota_request_get(response_str).json()
                 # trim to 40 games
-                player_history = player_history[:40]
+                if len(player_history) > 40:
+                    player_history = player_history[:40]
                 json.dump(player_history, player_history_file, indent=4)
 
-            return player_history
+        return player_history
     else:
         with player_history_path.open(mode="w") as player_history_file:
+            logging.info(f"get_player_match_history file does not exist for {player}")
             response_str = f"https://api.opendota.com/api/players/{player.player_id}/matches?significant=0&date=60"
             player_history = CacheHandler.opendota_request_get(response_str).json()
             # trim to 40 games
-            player_history = player_history[:40]
+            if len(player_history) > 40:
+                player_history = player_history[:40]
             json.dump(player_history, player_history_file, indent=4)
             return player_history
 
@@ -481,7 +494,8 @@ def save_player_match_history(player, match_history):
     with player_history_path.open(mode="w") as player_history_file:
         player_history = match_history
         # trim to 40 games
-        player_history = player_history[:40]
+        if len(player_history) > 40:
+            player_history = player_history[:40]
         json.dump(player_history, player_history_file, indent=4)
         logging.info(f"save_player_match_history succesful for {player}")
         if player_history_path_old.exists():
@@ -489,6 +503,6 @@ def save_player_match_history(player, match_history):
             if not check:
                 logging.info(f"Match history for player {player} differed, saving a copy.")
                 timestamp = time.strftime("%Y%m%d_%H%M%S")
-                os.rename(player_history_path_old, f"{player.player_id}_history_old_{timestamp}.json")
+                os.rename(player_history_path_old, f"match_histories/{player.player_id}_history_old_{timestamp}.json")
         return True
 
