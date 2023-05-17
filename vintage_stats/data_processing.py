@@ -213,9 +213,12 @@ def request_match_parse(match_id):
     
     if match_id in parse_requested_set:
         logging.info("\trequest_match_parse match was already requested")
+        return None
+
+    response_str = f'https://api.opendota.com/api/request/{match_id}'
+    response = CacheHandler.opendota_request_post(response_str)
 
     parse_requested_set.add(match_id)
-    sorted_set = list(parse_requested_set)
     logging.info(f"Sorted requested set: {pformat(sorted(parse_requested_set))}")
 
     with requested_set_file_path.open(mode="wb") as requested_set_file:
@@ -227,8 +230,6 @@ def request_match_parse(match_id):
         with open('parse_requested.log', 'w'):
             pass
     with open('parse_requested.log', 'a') as parse_log:
-        response_str = f'https://api.opendota.com/api/request/{match_id}'
-        response = CacheHandler.opendota_request_post(response_str)
         if response:
             parse_log.write(f'\nRequest: {response_str}\nResponse: {response.json()}')
     return response
