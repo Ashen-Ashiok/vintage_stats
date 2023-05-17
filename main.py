@@ -12,7 +12,7 @@ from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKO
     WARELIC_ID, GAME_MODES
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report, request_match_parse, get_mmr_history_table, get_player_match_history, CacheHandler, get_hero_name, \
-    save_player_match_history
+    save_player_match_history, handle_recent_matches_file
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report, \
     generate_last_week_report
 from vintage_stats.utility import get_last_monday
@@ -36,26 +36,26 @@ parser.add_argument("-t", "--test", action="store_true")
 args = parser.parse_args()
 # endregion args
 
-vintage_player_map = [  
-                        {'pid': SAUCE_ID, 'nick': 'Boneal'},
-                        {'pid': FAZY_ID, 'nick': 'Fazy'},
-                        {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
-                        {'pid': GWEN_ID, 'nick': 'Gwen'},
-                        {'pid': KESKOO_ID, 'nick': 'Keskoo'},
-                        {'pid': SHIFTY_ID, 'nick': 'Shifty'},
-                        {'pid': SHOTTY_ID, 'nick': 'Shotty'},
-                        {'pid': TIARIN_ID, 'nick': 'TiarinHino'},
-                        {'pid': WARELIC_ID, 'nick': 'Warelic'},
-                    ]
+vintage_player_map = [
+    {'pid': SAUCE_ID, 'nick': 'Boneal'},
+    {'pid': FAZY_ID, 'nick': 'Fazy'},
+    {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
+    {'pid': GWEN_ID, 'nick': 'Gwen'},
+    {'pid': KESKOO_ID, 'nick': 'Keskoo'},
+    {'pid': SHIFTY_ID, 'nick': 'Shifty'},
+    {'pid': SHOTTY_ID, 'nick': 'Shotty'},
+    {'pid': TIARIN_ID, 'nick': 'TiarinHino'},
+    {'pid': WARELIC_ID, 'nick': 'Warelic'},
+]
 
 vintage_test_player_map = [
-                        {'pid': GWEN_ID, 'nick': 'Gwen'},
-                        {'pid': KESKOO_ID, 'nick': 'Keskoo'},
-                        {'pid': SHIFTY_ID, 'nick': 'Shifty'},
-                        {'pid': SHOTTY_ID, 'nick': 'Shotty'},
-                        {'pid': TIARIN_ID, 'nick': 'TiarinHino'},
-                        {'pid': WARELIC_ID, 'nick': 'Warelic'},
-                    ]
+    {'pid': GWEN_ID, 'nick': 'Gwen'},
+    {'pid': KESKOO_ID, 'nick': 'Keskoo'},
+    {'pid': SHIFTY_ID, 'nick': 'Shifty'},
+    {'pid': SHOTTY_ID, 'nick': 'Shotty'},
+    {'pid': TIARIN_ID, 'nick': 'TiarinHino'},
+    {'pid': WARELIC_ID, 'nick': 'Warelic'},
+]
 
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
 vintage_test = vintage_stats.player.PlayerPool(vintage_test_player_map)
@@ -65,73 +65,76 @@ logging.getLogger().setLevel(logging.INFO)
 
 def main():
     if args.test:
-        match_history_dir_path = Path("match_histories")
-
         for player in vintage_test:
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            # todo only dump recent matches if it is different
-            player_recent_matches_path = match_history_dir_path / f"{player.player_id}_recent_{timestamp}.json"
+            logging.info(f"Getting recentMatches for player {player} from API.")
+            response_str = f"https://api.opendota.com/api/players/{player.player_id}/recentMatches"
+            try:
+                recent_matches = CacheHandler.opendota_request_get(response_str).json()
+            except Exception as e:
+                logging.error(f"Could not get recentMatches for player {player}, skipping in this cycle, error: {e}.")
+                continue
 
-            logging.info(f"Getting recentMatches for player {player}.")
-            with player_recent_matches_path.open(mode="w", encoding="utf-8") as player_recent_matches_file:
-                response_str = f"https://api.opendota.com/api/players/{player.player_id}/recentMatches"
-                try:
-                    recent_matches = CacheHandler.opendota_request_get(response_str).json()
-                except Exception as e:
-                    logging.error(f"Could not get recentMatches for player {player}, skipping in this cycle, error: {e}.")
-                    continue
+            if not recent_matches:
+                logging.error(f"Could not get recentMatches for player {player}, skipping in this cycle, error: {e}.")
+                continue
 
-                if not recent_matches:
-                    logging.error(f"Could not get recentMatches for player {player}, skipping in this cycle, error: {e}.")
-                    continue
+            handle_recent_matches_file(recent_matches, player)
 
-                logging.info(f"Saving recentMatches for player {player} to file {player_recent_matches_path}")
-                json.dump(recent_matches, player_recent_matches_file, indent=4)
+            logging.info(f"Getting matchHistory for player {player}.")
+            match_history = get_player_match_history(player)
 
-                logging.info(f"Getting matchHistory for player {player}.")
-                match_history = get_player_match_history(player)
+            meet_index = 0
+            for idx, match in enumerate(recent_matches):
+                if match['match_id'] == match_history[0]['match_id']:
+                    meet_index = idx
 
-                meet_index = 0
-                for idx, match in enumerate(recent_matches):
-                    if match['match_id'] == match_history[0]['match_id']:
-                        meet_index = idx
+            if meet_index:
+                new_matches = [x['match_id'] for x in recent_matches[:meet_index]]
+                logging.info(f"\nFound the sync between history and new recent matches, it is match with ID: "
+                             f"{recent_matches[meet_index]['match_id']}\n"
+                             f"New matches are: {new_matches}")
 
-                if meet_index:
-                    new_matches = [x['match_id'] for x in recent_matches[:meet_index]]
-                    logging.info(f"\nFound the sync between history and new recent matches, it is match with ID: "
-                          f"{recent_matches[meet_index]['match_id']}\n"
-                          f"New matches are: {new_matches}")
+                for item in recent_matches[:meet_index]:
+                    logging.info(f"Adding match with ID: {item['match_id']} to matchHistory of player {player}.")
+                    match_history.insert(0, item)
 
-                    for item in recent_matches[:meet_index]:
-                        logging.info(f"Adding match with ID: {item['match_id']} to matchHistory of player {player}.")
-                        match_history.insert(0, item)
+            logging.info(f"\nRequesting matches to be parsed for player {player}.")
 
-                logging.info(f"\nRequesting matches to be parsed for player {player}.")
+            def get_match_data_from_recent_matches(match_id, recent_matches):
+                for match in recent_matches:
+                    if match['match_id'] == match_id:
+                        return match
+                return None
 
-                request_count = 0
-                for item in match_history:
-                    if not item['version']:
-                        item['version'] = 'requested'
-                        request_match_parse(item['match_id'])
-                        request_count += 1
-                
-                logging.info(f"Request count: {request_count}, meet_index: {meet_index}")
+            request_count = 0
+            for item in match_history:
+                if item['version'] == 'requested':
+                    recent_match = get_match_data_from_recent_matches(item['match_id'], recent_matches)
+                    if recent_match and recent_match['version'] and recent_match['version'] != 'requested':
+                        item['version'] = recent_match['version']
 
-                if request_count or meet_index:
-                    logging.info(f"Saving extended matchHistory for player {player}.")
-                    save_player_match_history(player, match_history)
-                    
+                if not item['version']:
+                    item['version'] = 'requested'
+                    request_match_parse(item['match_id'])
+                    request_count += 1
+
+            logging.info(f"Request count: {request_count}, meet_index: {meet_index}")
+
+            if request_count or meet_index:
+                logging.info(f"Saving extended matchHistory for player {player}.")
+                save_player_match_history(player, match_history)
+
         # iterate through recentMatches matchID list, compare to the newest match in MatchHistory
         # when you find it, take any newer matches and append them to MatchHistory and:
-            # check if they are parsed:
-            #   NOT PARSED - send parse request, don't add to ToBePostedMatchGroup
-            #   ARE PARSED - extract player specific info (hero, KDA, STREAK, that byz) and add it to ToBePostedMatchGroup
+        # check if they are parsed:
+        #   NOT PARSED - send parse request, don't add to ToBePostedMatchGroup
+        #   ARE PARSED - extract player specific info (hero, KDA, STREAK, that byz) and add it to ToBePostedMatchGroup
         # every match in MatchHistory is either parsed or we sent a request, never a duplicate request
         # PART 2
         # after you are done with every player, save MatchHistory to file, keep a few old copies (10 maybe)
         # if ToBePostedMatchGroup contains at least one object:
-            # figure out if multiple players were in the same match
-            # create postings, send to bot
+        # figure out if multiple players were in the same match
+        # create postings, send to bot
         # log request count
         logging.info("END OF FUNCTION")
         return
@@ -163,7 +166,6 @@ def main():
             except TypeError:
                 solo_string = ''
             time_played = datetime.fromtimestamp(match_data.start_time)
-            time_string = time_played.strftime('%a %H:%M')
             game_mode_string = GAME_MODES.get(str(match_data.game_mode), "Unknown Mode")
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
@@ -204,7 +206,8 @@ def main():
         # Amount of games needed on a hero for it to show up in the best/worst heroes column (there is also win/loss difference condition though)
         games_for_hero_report = 2
 
-        print(f'played_heroes_threshold:{player_heroes_threshold}, best_worst_heroes_count: {best_worst_heroes_count}, games_for_hero_report: {games_for_hero_report}')
+        print(
+            f'played_heroes_threshold:{player_heroes_threshold}, best_worst_heroes_count: {best_worst_heroes_count}, games_for_hero_report: {games_for_hero_report}')
         date_from = datetime.now() - timedelta(days=28)
         date_to = datetime.now()
         if args.date_to != 'now':

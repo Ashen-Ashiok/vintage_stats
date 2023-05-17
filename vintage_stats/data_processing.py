@@ -537,3 +537,27 @@ def save_player_match_history(player, match_history):
                 os.rename(player_history_path_old, f"match_histories/{player.player_id}_history_old_{timestamp}.json")
         return True
 
+
+def handle_recent_matches_file(response_json, player):
+    match_history_dir_path = Path("match_histories")
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    player_recent_matches_path = match_history_dir_path / f"{player.player_id}_recentMatches.json"
+    player_recent_matches_path_archive = match_history_dir_path / f"{player.player_id}_recentMatches_{timestamp}.json"
+
+    if player_recent_matches_path.exists():
+        os.rename(player_recent_matches_path, player_recent_matches_path_archive)
+
+    with player_recent_matches_path.open(mode="w") as player_recent_matches_file:
+        recent_matches = response_json
+        json.dump(recent_matches, player_recent_matches_file, indent=4)
+        logging.info(f"Saving recentMatches for player {player} to file {player_recent_matches_path}")
+
+    if player_recent_matches_path_archive.exists():
+        logging.info(f"Comparing\n{player_recent_matches_path}\n{player_recent_matches_path_archive}")
+        check = filecmp.cmp(player_recent_matches_path, player_recent_matches_path_archive)
+        if check:
+            logging.info(f"Match history for player {player} identical, removing the copy.")
+            os.remove(player_recent_matches_path_archive)
+        else:
+            logging.info(f"Match history for player {player} differed, keeping a copy.")
+
