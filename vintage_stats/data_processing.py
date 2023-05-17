@@ -555,7 +555,7 @@ def handle_recent_matches_file(response_json, player):
         logging.info(f"Saving recentMatches for player {player} to file {player_recent_matches_path}")
 
     if player_recent_matches_path_archive.exists():
-        logging.info(f"Comparing\n{player_recent_matches_path}\n{player_recent_matches_path_archive}")
+        logging.info(f"Comparing {player_recent_matches_path} and {player_recent_matches_path_archive}.")
         check = filecmp.cmp(player_recent_matches_path, player_recent_matches_path_archive)
         if check:
             logging.info(f"Match history for player {player} identical, removing the copy.")

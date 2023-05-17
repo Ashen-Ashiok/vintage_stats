@@ -11,8 +11,9 @@ import vintage_stats.player
 from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, SHOTTY_ID, TIARIN_ID, \
     WARELIC_ID, GAME_MODES
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
-    format_and_print_winrate_report, request_match_parse, get_mmr_history_table, get_player_match_history, CacheHandler, get_hero_name, \
-    save_player_match_history, handle_recent_matches_file
+    format_and_print_winrate_report, request_match_parse, get_mmr_history_table, get_player_match_history, CacheHandler, \
+    get_hero_name, \
+    save_player_match_history, handle_recent_matches_file, check_victory
 from vintage_stats.reports import generate_winrate_report, get_all_stacks_report, get_player_activity_report, \
     generate_last_week_report
 from vintage_stats.utility import get_last_monday
@@ -21,17 +22,21 @@ from vintage_stats.utility import get_last_monday
 parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
                                  epilog='Find more info and latest version on https://github.com/Ashen-Ashiok/vintage_stats')
 
-parser.add_argument("--HCT", help="How many best/worst heroes to show in hero report. Default is 3.", default='3', type=int)
+parser.add_argument("--HCT", help="How many best/worst heroes to show in hero report. Default is 3.", default='3',
+                    type=int)
 parser.add_argument("--HT", help="Threshold for a very played hero. Default is 2.", default='2', type=int)
-parser.add_argument("--date-from", help="Sets cutoff date from for custom report. Default is 28 days ago.", default='28d')
+parser.add_argument("--date-from", help="Sets cutoff date from for custom report. Default is 28 days ago.",
+                    default='28d')
 parser.add_argument("--date-to", help="Sets cutoff date to for custom report. Default is now.", default='now')
-parser.add_argument("-activity", "--activity-report", help="Print games per week in last 6 months or more", action="store_true")
+parser.add_argument("-activity", "--activity-report", help="Print games per week in last 6 months or more",
+                    action="store_true")
 parser.add_argument("-monitor", "--monitor", help="")
-parser.add_argument("-monrep", "--since-monday-report", help="Print this week (since last Monday) report for Vintage", action="store_true")
+parser.add_argument("-monrep", "--since-monday-report", help="Print this week (since last Monday) report for Vintage",
+                    action="store_true")
 parser.add_argument("-report", "--custom-report", help="Print a custom report for Vintage", action="store_true")
 parser.add_argument("-stacks", "--stack-reports", help="Print all duo and trio stack reports", action="store_true")
 parser.add_argument("-w", "--simple_last_week", action="store_true")
-parser.add_argument("-t", "--test", action="store_true")
+parser.add_argument("-t", "--monitor_updated", action="store_true")
 
 args = parser.parse_args()
 # endregion args
@@ -64,43 +69,78 @@ logging.getLogger().setLevel(logging.INFO)
 
 
 def main():
-    if args.test:
+    if args.monitor_updated:
         total_new_matches = 0
+        matches_to_post = []
+
         for player in vintage_test:
-            logging.info(f"Getting recentMatches for player {player} from API.")
+            # region get recent matches
+            logging.info(f"Getting recentMatches for player {player.nick} from API.")
             response_str = f"https://api.opendota.com/api/players/{player.player_id}/recentMatches"
             try:
                 recent_matches = CacheHandler.opendota_request_get(response_str).json()
             except Exception as e:
-                logging.error(f"Could not get recentMatches for player {player}, skipping in this cycle, error: {e}.")
+                logging.error(f"Could not get recentMatches for player {player.nick}, skipping in this cycle, error: {e}.")
                 continue
 
             if not recent_matches:
-                logging.error(f"Could not get recentMatches for player {player}, skipping in this cycle, error: {e}.")
+                logging.error(f"Could not get recentMatches for player {player.nick}, skipping in this cycle, error: {e}.")
                 continue
 
             handle_recent_matches_file(recent_matches, player)
+            logging.info(f"Finished getting recentMatches, length: {len(recent_matches)} for player {player.nick}.")
+            # endregion
 
-            logging.info(f"Getting matchHistory for player {player}.")
+            logging.info(f"Getting matchHistory for player {player.nick}.")
             match_history = get_player_match_history(player)
+            logging.info(f"Finished getting matchHistory for player {player.nick}, length: {len(match_history)}.")
 
-            meet_index = 0
+            common_history_point = 0
             for idx, match in enumerate(recent_matches):
                 if match['match_id'] == match_history[0]['match_id']:
-                    meet_index = idx
+                    common_history_point = idx
 
-            if meet_index:
-                new_matches = [x['match_id'] for x in recent_matches[:meet_index]]
+            # If common history point is 0, there are no new matches
+            if common_history_point:
+                new_matches = [x['match_id'] for x in recent_matches[:common_history_point]]
+
+                for match in recent_matches[:common_history_point]:
+                    if match['version'] and match['version'] != 'requested':
+                        matches_to_post.append([True, player, match])
+                    else:
+                        matches_to_post.append([True, player, match])
+
                 total_new_matches += len(new_matches)
-                logging.info(f"\nFound the sync between history and new recent matches, it is match with ID: "
-                             f"{recent_matches[meet_index]['match_id']}\n"
-                             f"New matches are: {new_matches}")
+                logging.info(f"Found the sync between history and new recent matches, it is match with ID: "
+                             f"{recent_matches[common_history_point]['match_id']}")
+                logging.info(f"New matches are: {new_matches}")
 
-                for item in recent_matches[:meet_index]:
+                for item in recent_matches[:common_history_point]:
                     logging.info(f"Adding match with ID: {item['match_id']} to matchHistory of player {player}.")
                     match_history.insert(0, item)
 
-            logging.info(f"\nRequesting matches to be parsed for player {player}.")
+            # Update older matches in match history if recentMatches has more
+            update_flag = False
+            logging.info(f"Checking for new data for player history of player {player.nick}")
+            for idx, history_match in enumerate(match_history[common_history_point:20]):
+                matching_recent_match = recent_matches[idx+common_history_point]
+                if matching_recent_match['match_id'] != history_match['match_id']:
+                    logging.error(f"Mismatch between match ID order of history and recent matches, idx {idx},"
+                                  f" history match ID {history_match['match_id']},"
+                                  f" recent match ID {matching_recent_match['match_id']}.")
+                    break
+
+                if len(history_match) <= len(matching_recent_match) and matching_recent_match['version'] \
+                        and matching_recent_match['version'] != "requested":
+
+                    if history_match['version'] == 'requested' or not history_match['version']:
+                        matches_to_post.append([True, player, matching_recent_match])
+
+                    match_history[idx+common_history_point] = matching_recent_match
+                    logging.info(f"Extended info for match ID {history_match['match_id']} based on data from "
+                                 f"recentMatches.")
+                    update_flag = True
+            logging.info(f"\nRequesting matches to be parsed for player {player.nick}.")
 
             def get_match_data_from_recent_matches(match_id, recent_matches):
                 for match in recent_matches:
@@ -120,10 +160,10 @@ def main():
                     request_match_parse(item['match_id'])
                     request_count += 1
 
-            logging.info(f"Request count: {request_count}, meet_index: {meet_index}")
+            logging.info(f"Request count: {request_count}, common_history_point: {common_history_point} for player {player.nick}")
 
-            if request_count or meet_index:
-                logging.info(f"Saving extended matchHistory for player {player}.")
+            if update_flag or request_count or common_history_point:
+                logging.info(f"Saving extended matchHistory for player {player.nick}.")
                 save_player_match_history(player, match_history)
 
         # iterate through recentMatches matchID list, compare to the newest match in MatchHistory
@@ -141,6 +181,19 @@ def main():
         new_matches_string = "no new matches."
         if total_new_matches:
             new_matches_string = f"found {total_new_matches} new matches!"
+
+        for match_listing in matches_to_post:
+            is_parsed = match_listing[0]
+            player = match_listing[1]
+            match = match_listing[2]
+            # Post matches that are new and parsed
+            if is_parsed:
+                result_string = 'WON' if check_victory(match) else 'LOST'
+                print(f"Player {player.nick} played match {match['match_id']}, went "
+                      f"{match['kills']}/{match['deaths']}/{match['assists']} and {result_string}.")
+            else:
+                print(f"Detected a new match {match['match_id']} for player {player.nick} but it is not parsed yet.")
+
         logging.info(f"Monitor run finished, {new_matches_string}")
         return
 
@@ -226,7 +279,8 @@ def main():
         print("Printing Vintage winrate report for time period from {} to {}, hero threshold set to {}.".format(
             date_from.strftime('%d-%b-%y'), date_to.strftime('%d-%b-%y'), player_heroes_threshold))
 
-        format_and_print_winrate_report(last_week_winrate_report, player_heroes_threshold, games_for_hero_report, best_worst_heroes_count)
+        format_and_print_winrate_report(last_week_winrate_report, player_heroes_threshold, games_for_hero_report,
+                                        best_worst_heroes_count)
 
     if args.stack_reports:
         date_from = datetime.now() - timedelta(days=28)
