@@ -131,7 +131,7 @@ def main():
                     break
 
                 if len(history_match) <= len(matching_recent_match) and matching_recent_match['version'] \
-                        and matching_recent_match['version'] != "requested":
+                        and matching_recent_match['version'] != "requested" and history_match != matching_recent_match:
 
                     if history_match['version'] == 'requested' or not history_match['version']:
                         matches_to_post.append([True, player, matching_recent_match])
@@ -195,7 +195,6 @@ def main():
                 print(f"Detected a new match {match['match_id']} for player {player.nick} but it is not parsed yet.")
 
         logging.info(f"Monitor run finished, {new_matches_string}")
-        return
 
     if args.monitor:
         post_only_new = True
