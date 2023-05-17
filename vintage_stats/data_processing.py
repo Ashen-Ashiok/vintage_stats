@@ -124,12 +124,13 @@ def log_requests_count():
     if not request_log_path.exists():
         with open('request.log', 'w') as request_log:
             request_log.write('0')
-    requests_used_today = 0
+    requests_count_history = 0
     with open('request.log', 'r+') as request_log:
         for line in request_log:
-            requests_used_today = int(line)
+            requests_count_history = int(line)
     with open('request.log', 'w') as request_log:
-        request_log.write('{}'.format(get_requests_count() + requests_used_today))
+        logging.info(f"Requests used this run: {get_requests_count()}, requests_count_history: {requests_count_history}.")
+        request_log.write('{}'.format(get_requests_count() + requests_count_history))
 
 
 def get_stack_wl(players_list, exclusive=False, excluded_players=None, _cutoff_date_from=None, _cutoff_date_to=None):

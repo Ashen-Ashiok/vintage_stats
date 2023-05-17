@@ -65,6 +65,7 @@ logging.getLogger().setLevel(logging.INFO)
 
 def main():
     if args.test:
+        total_new_matches = 0
         for player in vintage_test:
             logging.info(f"Getting recentMatches for player {player} from API.")
             response_str = f"https://api.opendota.com/api/players/{player.player_id}/recentMatches"
@@ -90,6 +91,7 @@ def main():
 
             if meet_index:
                 new_matches = [x['match_id'] for x in recent_matches[:meet_index]]
+                total_new_matches += len(new_matches)
                 logging.info(f"\nFound the sync between history and new recent matches, it is match with ID: "
                              f"{recent_matches[meet_index]['match_id']}\n"
                              f"New matches are: {new_matches}")
@@ -136,7 +138,10 @@ def main():
         # figure out if multiple players were in the same match
         # create postings, send to bot
         # log request count
-        logging.info("END OF FUNCTION")
+        new_matches_string = "no new matches."
+        if total_new_matches:
+            new_matches_string = f"found {total_new_matches} new matches!"
+        logging.info(f"Monitor run finished, {new_matches_string}")
         return
 
     if args.monitor:
