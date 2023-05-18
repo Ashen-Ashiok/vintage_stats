@@ -55,9 +55,12 @@ class CacheHandler:
             return response
 
     @staticmethod
-    def opendota_request_post(response_str):
-        response = requests.post(response_str)
-        logging.debug('Uncached req: {}'.format(response_str))
+    def opendota_request_post(request_url):
+        logging.info(f"opendota_request_post, url: {request_url}")
+        headers = {'content-length': ''}
+        response = requests.post(request_url, headers)
+        logging.info(f"opendota_request_post, response: {response.json()}")
+        logging.debug('Uncached req: {}'.format(request_url))
         CacheHandler.requests_count += 1
         return response
 
