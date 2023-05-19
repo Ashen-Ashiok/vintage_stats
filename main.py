@@ -4,6 +4,7 @@ import logging
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
+from pprint import pformat
 
 import timeago
 
@@ -75,7 +76,9 @@ def main():
 
         for player in vintage_test:
             # region get recent matches
-            logging.info(f"Getting recentMatches for player {player.nick} from API.")
+            logging.info(f"\n-----------------------------------------------------------------------\n"
+                         f"Getting recentMatches for player"
+                         f" {player.nick} from API.")
             response_str = f"https://api.opendota.com/api/players/{player.player_id}/recentMatches"
             try:
                 recent_matches = CacheHandler.opendota_request_get(response_str).json()
@@ -84,7 +87,7 @@ def main():
                 continue
 
             if not recent_matches:
-                logging.error(f"Could not get recentMatches for player {player.nick}, skipping in this cycle, error: {e}.")
+                logging.error(f"Could not get recentMatches for player {player.nick}, skipping in this cycle, recent_matches empty.")
                 continue
 
             handle_recent_matches_file(recent_matches, player)
@@ -123,7 +126,7 @@ def main():
             update_flag = False
             logging.info(f"Checking for new data for player history of player {player.nick}")
             for idx, history_match in enumerate(match_history[common_history_point:20]):
-                matching_recent_match = recent_matches[idx+common_history_point]
+                matching_recent_match = recent_matches[idx + common_history_point]
                 if matching_recent_match['match_id'] != history_match['match_id']:
                     logging.error(f"Mismatch between match ID order of history and recent matches, idx {idx},"
                                   f" history match ID {history_match['match_id']},"
@@ -136,7 +139,7 @@ def main():
                     if history_match['version'] == 'requested' or not history_match['version']:
                         matches_to_post.append([True, player, matching_recent_match])
 
-                    match_history[idx+common_history_point] = matching_recent_match
+                    match_history[idx + common_history_point] = matching_recent_match
                     logging.info(f"Extended info for match ID {history_match['match_id']} based on data from "
                                  f"recentMatches.")
                     update_flag = True
@@ -182,26 +185,34 @@ def main():
         if total_new_matches:
             new_matches_string = f"found {total_new_matches} new matches!"
 
+        def find_party_games(match_listings):
+            match_id_dict = {}
+            for item in match_listings:
+                match_id_dict[item[2]['match_id']] = item[1].player_id
+
+            logging.info("\nDetecting party vintage games: ")
+            logging.info(pformat(match_id_dict))
+
+        find_party_games(matches_to_post)
         for match_listing in matches_to_post:
             is_parsed = match_listing[0]
             player = match_listing[1]
             match = match_listing[2]
-            solo_string = 'party ' if match.party_size > 1 else 'solo '
-            game_mode_string = GAME_MODES.get(str(match.game_mode), "Unknown Mode")
+            solo_string = 'party ' if match['party_size'] > 1 else 'solo '
+            game_mode_string = GAME_MODES.get(str(match['game_mode']), "Unknown Mode")
             player_hero = get_hero_name(match['hero_id'])
-            time_played = datetime.fromtimestamp(match_data['start_time'])
+            time_played = datetime.fromtimestamp(match['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
-
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
-                                                                                                datetime.now())
+                                                                                                            datetime.now())
             # Post matches that are new and parsed
             if is_parsed:
                 result_string = 'WON' if check_victory(match) else 'LOST'
                 print(f"**{player.nick}** played a {solo_string}{game_mode_string} game as **{player_hero}**, "
-              f"went {match['kills']}-{match['deaths']}-{match['assists']} and **{result_string}**."
-              f" The game started {time_ago_string}. Links:\n"
-              f"<https://www.stratz.com/matches/{match['match_id']}>,"
-              f" <https://www.opendota.com/matches/{match['match_id']}>")      
+                      f"went {match['kills']}-{match['deaths']}-{match['assists']} and **{result_string}**."
+                      f" The game started {time_ago_string}. Links:\n"
+                      f"<https://www.stratz.com/matches/{match['match_id']}>,"
+                      f" <https://www.opendota.com/matches/{match['match_id']}>")
             else:
                 print(f"Detected a new match {match['match_id']} for player {player.nick} but it is not parsed yet.")
 
@@ -271,7 +282,7 @@ def main():
         player_heroes_threshold = args.HT
         # Amount of heroes to show in the best/worst heroes column
         best_worst_heroes_count = args.HCT
-        # Amount of games needed on a hero for it to show up in the best/worst heroes column (there is also win/loss difference condition though)
+        # Amount of games needed on a hero for it to show up in the best/worst heroes column (there is also win/loss difference condition)
         games_for_hero_report = 2
 
         print(
