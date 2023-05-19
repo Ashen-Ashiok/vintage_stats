@@ -42,7 +42,6 @@ args = parser.parse_args()
 # endregion args
 
 vintage_player_map = [
-    {'pid': SAUCE_ID, 'nick': 'Boneal'},
     {'pid': FAZY_ID, 'nick': 'Fazy'},
     {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
     {'pid': GWEN_ID, 'nick': 'Gwen'},
@@ -54,6 +53,7 @@ vintage_player_map = [
 ]
 
 vintage_test_player_map = [
+    {'pid': FAZY_ID, 'nick': 'Fazy'},
     {'pid': GWEN_ID, 'nick': 'Gwen'},
     {'pid': KESKOO_ID, 'nick': 'Keskoo'},
     {'pid': SHIFTY_ID, 'nick': 'Shifty'},
@@ -186,11 +186,22 @@ def main():
             is_parsed = match_listing[0]
             player = match_listing[1]
             match = match_listing[2]
+            solo_string = 'party ' if match.party_size > 1 else 'solo '
+            game_mode_string = GAME_MODES.get(str(match.game_mode), "Unknown Mode")
+            player_hero = get_hero_name(match['hero_id'])
+            time_played = datetime.fromtimestamp(match_data['start_time'])
+            minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
+
+            time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
+                                                                                                datetime.now())
             # Post matches that are new and parsed
             if is_parsed:
                 result_string = 'WON' if check_victory(match) else 'LOST'
-                print(f"Player {player.nick} played match {match['match_id']}, went "
-                      f"{match['kills']}/{match['deaths']}/{match['assists']} and {result_string}.")
+                print(f"**{player.nick}** played a {solo_string}{game_mode_string} game as **{player_hero}**, "
+              f"went {match['kills']}-{match['deaths']}-{match['assists']} and **{result_string}**."
+              f" The game started {time_ago_string}. Links:\n"
+              f"<https://www.stratz.com/matches/{match['match_id']}>,"
+              f" <https://www.opendota.com/matches/{match['match_id']}>")      
             else:
                 print(f"Detected a new match {match['match_id']} for player {player.nick} but it is not parsed yet.")
 

@@ -265,8 +265,7 @@ def get_last_matches_map(players_list, days_threshold=7):
     
         if not matches_response:
             logging.error(f"Missing matches response for player {listed_player.nick}. Replaced with previous data.")
-            match_data_old = MatchData(**(last_matches_map_old[listed_player.nick]))
-            last_matches_map[listed_player.nick] = match_data_old
+            last_matches_map[listed_player.nick] = last_matches_map_old[listed_player_nick]
             continue
 
         logging.debug(listed_player)
