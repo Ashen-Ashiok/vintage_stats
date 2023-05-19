@@ -73,7 +73,7 @@ def main():
     if args.monitor_updated:
         total_new_matches = 0
         matches_to_post = []
-
+        test_mode = False
         for player in vintage_test:
             # region get recent matches
             logging.info(f"\n-----------------------------------------------------------------------\n"
@@ -134,9 +134,13 @@ def main():
                     break
 
                 if len(history_match) <= len(matching_recent_match) and matching_recent_match['version'] \
-                        and matching_recent_match['version'] != "requested" and history_match != matching_recent_match:
+                        and matching_recent_match['version'] != "requested" and history_match != matching_recent_match\
+                        or test_mode:
 
                     if history_match['version'] == 'requested' or not history_match['version']:
+                        matches_to_post.append([True, player, matching_recent_match])
+
+                    if test_mode and idx < 2:
                         matches_to_post.append([True, player, matching_recent_match])
 
                     match_history[idx + common_history_point] = matching_recent_match
@@ -188,33 +192,78 @@ def main():
         def find_party_games(match_listings):
             match_id_dict = {}
             for item in match_listings:
-                match_id_dict[item[2]['match_id']] = item[1].player_id
+                if item[2]['match_id'] in match_id_dict:
+                    match_id_dict[item[2]['match_id']].append(item[1].player_id)
+                else:
+                    match_id_dict[item[2]['match_id']] = []
+                    match_id_dict[item[2]['match_id']].append(item[1].player_id)
+
+            party_matches = {k: v for (k, v) in match_id_dict.items() if len(v)>1}
 
             logging.info("\nDetecting party vintage games: ")
-            logging.info(pformat(match_id_dict))
+            logging.info(pformat(party_matches))
+            return party_matches
 
-        find_party_games(matches_to_post)
-        for match_listing in matches_to_post:
-            is_parsed = match_listing[0]
-            player = match_listing[1]
-            match = match_listing[2]
-            solo_string = 'party ' if match['party_size'] > 1 else 'solo '
-            game_mode_string = GAME_MODES.get(str(match['game_mode']), "Unknown Mode")
-            player_hero = get_hero_name(match['hero_id'])
-            time_played = datetime.fromtimestamp(match['start_time'])
+        party_matches = find_party_games(matches_to_post)
+
+        party_postings = {}
+        if len(party_matches) > 0:
+            for match_listing in matches_to_post:
+                if match_listing[0] and match_listing[2]['match_id'] in party_matches.keys():
+                    if match_listing[2]['match_id'] not in party_postings:
+                        party_postings[match_listing[2]['match_id']] = []
+                        party_postings[match_listing[2]['match_id']].append((match_listing[1], match_listing[2]))
+                    else:
+                        party_postings[match_listing[2]['match_id']].append((match_listing[1], match_listing[2]))
+
+        for posting in party_postings.values():
+            players_involved = [item[0] for item in posting]
+            player_match_data = [item[1] for item in posting]
+
+            match_generic = player_match_data[0]
+            player_string = " and ".join([player.nick for player in players_involved])
+            game_mode_string = GAME_MODES.get(str(match_generic['game_mode']), "Unknown Mode")
+            result_string = 'WON' if check_victory(match_generic) else 'LOST'
+            time_played = datetime.fromtimestamp(match_generic['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
                                                                                                             datetime.now())
-            # Post matches that are new and parsed
-            if is_parsed:
-                result_string = 'WON' if check_victory(match) else 'LOST'
-                print(f"**{player.nick}** played a {solo_string}{game_mode_string} game as **{player_hero}**, "
-                      f"went {match['kills']}-{match['deaths']}-{match['assists']} and **{result_string}**."
-                      f" The game started {time_ago_string}. Links:\n"
-                      f"<https://www.stratz.com/matches/{match['match_id']}>,"
-                      f" <https://www.opendota.com/matches/{match['match_id']}>")
-            else:
-                print(f"Detected a new match {match['match_id']} for player {player.nick} but it is not parsed yet.")
+
+            print(f"------------------------------------------\n"
+                  f"Players **{player_string}** played a {game_mode_string} game **together** and **{result_string}**.")
+
+            for item in posting:
+                player = item[0]
+                match = item[1]
+                player_hero = get_hero_name(match['hero_id'])
+                print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
+
+            print(f"The game started {time_ago_string}. Link: <https://www.stratz.com/matches/{match_generic['match_id']}>")
+
+        if not test_mode:
+            for match_listing in matches_to_post:
+                is_parsed = match_listing[0]
+                player = match_listing[1]
+                match = match_listing[2]
+                if match['match_id'] in party_matches.keys():
+                    continue
+                solo_string = 'party ' if match['party_size'] > 1 else 'solo '
+                game_mode_string = GAME_MODES.get(str(match['game_mode']), "Unknown Mode")
+                player_hero = get_hero_name(match['hero_id'])
+                time_played = datetime.fromtimestamp(match['start_time'])
+                minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
+                time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
+                                                                                                                datetime.now())
+                # Post matches that are new and parsed
+                if is_parsed:
+                    result_string = 'WON' if check_victory(match) else 'LOST'
+                    print(f"**{player.nick}** played a {solo_string}{game_mode_string} game as **{player_hero}**, "
+                          f"went {match['kills']}-{match['deaths']}-{match['assists']} and **{result_string}**."
+                          f" The game started {time_ago_string}. Links:\n"
+                          f"<https://www.stratz.com/matches/{match['match_id']}>,"
+                          f" <https://www.opendota.com/matches/{match['match_id']}>")
+                else:
+                    print(f"Detected a new match {match['match_id']} for player {player.nick} but it is not parsed yet.")
 
         logging.info(f"Monitor run finished, {new_matches_string}")
 
@@ -235,7 +284,7 @@ def main():
                 set_for_parse.add(match_data.match_ID)
 
         for match_id in set_for_parse:
-            request_match_parse(match_id).json()
+            request_match_parse(match_id)
 
         for player in last_matches_map:
             match_data = last_matches_map[player]
