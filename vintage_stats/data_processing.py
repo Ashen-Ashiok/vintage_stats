@@ -10,10 +10,12 @@ from datetime import datetime, timedelta
 from pprint import pformat
 
 import requests
+import timeago
 
+from vintage_stats.constants import GAME_MODES
 from vintage_stats.utility import WLRecord, get_days_since_date
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 hero_map = None
 
@@ -214,7 +216,7 @@ def request_match_parse(match_id):
         with requested_set_file_path.open(mode="rb") as requested_set_file:
             parse_requested_set = pickle.load(requested_set_file)
             logging.info("\trequest_match_parse pickle file loaded")
-    
+
     if match_id in parse_requested_set:
         logging.info("\trequest_match_parse match was already requested")
         return None
@@ -244,17 +246,11 @@ def get_last_matches_map(players_list, days_threshold=7):
     last_matches_map_file_path = Path("lastmatches.json")
     last_matches_map_file_path_temp = Path("lastmatches_new.json")
     last_matches_map_file_path_debug = Path("debug")
-    MatchData = namedtuple('MatchData', ['match_ID', 'player_won', 'hero_name', 'kills', 'deaths',
-                                         'assists', 'party_size', 'start_time', 'is_new', 'game_mode'])
 
     is_initial_run = False
     if last_matches_map_file_path.exists():
         with open("lastmatches.json") as last_matches_map_file:
             last_matches_map_old = json.load(last_matches_map_file)
-            for listed_player_nick in last_matches_map_old:
-                if last_matches_map_old[listed_player_nick]:
-                    match_data = MatchData(**(last_matches_map_old[listed_player_nick]))
-                    last_matches_map_old[listed_player_nick] = match_data
     else:
         is_initial_run = True
 
@@ -262,10 +258,11 @@ def get_last_matches_map(players_list, days_threshold=7):
         response_str = 'https://api.opendota.com/api/players/{}/matches?significant=0&date={}'.format(
             listed_player.player_id, days_threshold)
         matches_response = CacheHandler.opendota_request_get(response_str)
-    
+
         if not matches_response:
             logging.error(f"Missing matches response for player {listed_player.nick}. Replaced with previous data.")
-            last_matches_map[listed_player.nick] = last_matches_map_old[listed_player_nick]
+            last_matches_map[listed_player.nick] = last_matches_map_old[listed_player.nick]
+            last_matches_map[listed_player.nick]['is_new'] = False
             continue
 
         logging.debug(listed_player)
@@ -285,16 +282,21 @@ def get_last_matches_map(players_list, days_threshold=7):
             if is_initial_run:
                 is_new = True
             else:
+                logging.info(f"{listed_player.nick} checking id {last_match['match_id']}"
+                             f" vs {last_matches_map_old[listed_player.nick]['match_id']}")
                 if listed_player.nick in last_matches_map_old \
-                        and last_match['match_id'] != last_matches_map_old[listed_player.nick].match_ID:
+                        and last_match['match_id'] != last_matches_map_old[listed_player.nick]['match_id']:
                     is_new = True
 
-            match_data = MatchData(match_id, player_won, player_hero, kills, deaths, assists, party_size, start_time,
-                                   game_mode=game_mode, is_new=is_new)
-            match_data_dict = match_data._asdict()
-            last_matches_map[listed_player.nick] = match_data_dict
+            match_data = dict(match_id=match_id, player_won=player_won, player_hero=player_hero, kills=kills, deaths=deaths,
+                              assists=assists, party_size=party_size, start_time=start_time, game_mode=game_mode, is_new=is_new)
+            last_matches_map[listed_player.nick] = match_data
 
     json.dump(last_matches_map, open(last_matches_map_file_path_temp, "w"), indent=4)
+
+    if is_initial_run:
+        json.dump(last_matches_map, open(last_matches_map_file_path, "w"), indent=4)
+
     check = filecmp.cmp('lastmatches.json', 'lastmatches_new.json')
     if not check:
         logging.info(f"Lastmatches files differed, saving a copy of the old.")
@@ -305,27 +307,6 @@ def get_last_matches_map(players_list, days_threshold=7):
         logging.info(f"Lastmatches files were identical, keeping only one.")
         os.remove("lastmatches.json")
         os.rename('lastmatches_new.json', 'lastmatches.json')
-
-    for listed_player_nick in last_matches_map:
-        match_data = MatchData(**(last_matches_map[listed_player_nick]))
-        last_matches_map[listed_player_nick] = match_data
-
-    logging.info(f"Is_new: {is_new}, is_initial_run: {is_initial_run}")
-
-    if not is_initial_run:
-        for player in last_matches_map:
-            current_match_ID = last_matches_map[player].match_ID
-            try:
-                previous_match_ID = last_matches_map_old[player].match_ID
-            except KeyError:
-                logging.error(f"Previous match missing for {player}, dumping map to debug/lastmatches_{int(time.time())}.json")
-                timestamp = time.strftime("%Y%m%d_%H%M%S")
-                json.dump(last_matches_map, open(last_matches_map_file_path_debug / f"lastmatches_{timestamp}_error_new.json", "w"), indent=4)
-                json.dump(last_matches_map_old, open(last_matches_map_file_path_debug / f"lastmatches_{timestamp}_error_old.json", "w"), indent=4)
-                continue
-            if current_match_ID == previous_match_ID:
-                last_matches_map[listed_player_nick] = match_data
-                last_matches_map[player] = last_matches_map[player]._replace(is_new=False)
 
     return last_matches_map
 
@@ -398,7 +379,7 @@ def format_and_print_winrate_report(data_report, _hero_count_threshold, _heroes_
 
 
 def get_mmr_history_table(player, match_id_with_known_mmr, known_mmr_amount, _start_date_string=None, _end_date_string=None):
-    start_date = datetime.now() - timedelta(days=2*365)
+    start_date = datetime.now() - timedelta(days=2 * 365)
     end_date = datetime.now()
     if _start_date_string:
         start_date = datetime.fromisoformat(_start_date_string)
@@ -460,7 +441,7 @@ def get_mmr_history_table(player, match_id_with_known_mmr, known_mmr_amount, _st
             prev_change = match_record['mmr_change']
 
     # Iterate from the known point to the present
-    for match_record in reversed(match_map[:known_mmr_idx+1]):
+    for match_record in reversed(match_map[:known_mmr_idx + 1]):
         if match_record['mmr_after']:
             prev_mmr = match_record['mmr_after']
             prev_change = match_record['mmr_change']
@@ -482,7 +463,7 @@ def get_player_match_history(player):
         history_file_error = False
         with player_history_path.open(mode="r") as player_history_file:
             logging.info(f"get_player_match_history file exists for {player}")
-            
+
             try:
                 player_history = json.load(player_history_file)
             except Exception as e:
@@ -491,7 +472,7 @@ def get_player_match_history(player):
 
             if not player_history or not isinstance(player_history, list) or not player_history[0]['match_id']:
                 history_file_error = True
-        
+
         if history_file_error:
             logging.error(f"get_player_match_history existing file is invalid for {player}")
 
@@ -515,6 +496,52 @@ def get_player_match_history(player):
                 player_history = player_history[:40]
             json.dump(player_history, player_history_file, indent=4)
             return player_history
+
+
+def update_player_match_history(player, recent_matches, previous_match_history, common_history_point):
+    # Update older matches in match history if recentMatches has more
+    update_flag = False
+    logging.info(f"Checking for new data for player history of player {player.nick}")
+    for idx, history_match in enumerate(previous_match_history[common_history_point:20]):
+        matching_recent_match = recent_matches[idx + common_history_point]
+        if matching_recent_match['match_id'] != history_match['match_id']:
+            logging.error(f"Mismatch between match ID order of history and recent matches, idx {idx},"
+                          f" history match ID {history_match['match_id']},"
+                          f" recent match ID {matching_recent_match['match_id']}.")
+            break
+
+        if len(history_match) <= len(matching_recent_match) and matching_recent_match['version'] \
+                and matching_recent_match['version'] != "requested" and history_match != matching_recent_match:
+
+            previous_match_history[idx + common_history_point] = matching_recent_match
+            logging.info(f"Extended info for match ID {history_match['match_id']} based on data from "
+                         f"recentMatches.")
+            update_flag = True
+
+    def get_match_data_from_recent_matches(match_id, recent_matches):
+        for match in recent_matches:
+            if match['match_id'] == match_id:
+                return match
+        return None
+
+    request_count = 0
+    for item in previous_match_history:
+        if item['version'] == 'requested':
+            recent_match = get_match_data_from_recent_matches(item['match_id'], recent_matches)
+            if recent_match and recent_match['version'] and recent_match['version'] != 'requested':
+                item['version'] = recent_match['version']
+
+        if not item['version']:
+            logging.info(f"Requesting match {item['match_id']} to be parsed for player {player.nick}.")
+            item['version'] = 'requested'
+            request_match_parse(item['match_id'])
+            request_count += 1
+
+    logging.info(f"Request count: {request_count}, common_history_point: {common_history_point} for player {player.nick}")
+
+    if update_flag or request_count or common_history_point:
+        logging.info(f"Saving extended matchHistory for player {player.nick}.")
+        save_player_match_history(player, previous_match_history)
 
 
 def save_player_match_history(player, match_history):
@@ -565,3 +592,91 @@ def handle_recent_matches_file(response_json, player):
         else:
             logging.info(f"Match history for player {player} differed, keeping a copy.")
 
+
+def get_match_history_difference(player, recent_matches, previous_match_history, match_id_to_match_listing):
+    common_history_point = 0
+    for idx, match in enumerate(recent_matches):
+        if match['match_id'] == previous_match_history[0]['match_id']:
+            common_history_point = idx
+
+    # If common history point is 0, there are no new matches
+    if common_history_point:
+        new_matches = [x['match_id'] for x in recent_matches[:common_history_point]]
+
+        for match in recent_matches[:common_history_point]:
+            if match['match_id'] not in match_id_to_match_listing:
+                match_id_to_match_listing[match['match_id']] = MatchListing(player, match)
+            else:
+                match_id_to_match_listing[match['match_id']].add_match(player, match)
+
+        logging.info(f"Found the sync between history and new recent matches, it is match with ID: "
+                     f"{recent_matches[common_history_point]['match_id']}")
+        logging.info(f"New matches are: {new_matches}")
+
+        for item in recent_matches[:common_history_point]:
+            logging.info(f"Adding match with ID: {item['match_id']} to matchHistory of player {player}.")
+            previous_match_history.insert(0, item)
+
+    return match_id_to_match_listing, common_history_point
+
+
+class MatchListing:
+    """Holds information about a match in format that allows easy printing out.
+    All the involved tracked players and their respective match data."""
+
+    def __init__(self, player, player_match_data):
+        self.is_vintage_party = False
+        self.players = [player]
+        self.player_match_data = [player_match_data]
+
+    def add_match(self, player, player_match_data):
+        self.is_vintage_party = True
+        self.players.append(player)
+        self.player_match_data.append(player_match_data)
+
+    def get_common_data(self):
+        return self.player_match_data[0]
+
+    def print_listing(self):
+        listing_string = ""
+
+        if self.is_vintage_party:
+            players_involved = self.players
+            player_match_data = self.player_match_data
+
+            match_generic = player_match_data[0]
+            player_string = ", ".join([player.nick for player in players_involved[:-1]])
+            player_string += f" and {players_involved[1]}"
+            game_mode_string = GAME_MODES.get(str(match_generic['game_mode']), "Unknown Mode")
+            result_string = 'WON' if check_victory(match_generic) else 'LOST'
+            time_played = datetime.fromtimestamp(match_generic['start_time'])
+            minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
+            game_duration = match_generic['duration']/60
+            time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
+                                                                                                            datetime.now())
+            print(f"------------------------------------------\n"
+                  f"Amazing players **{player_string}** played a {game_mode_string} game **together** and **{result_string}**.")
+            for idx, player in enumerate(self.players):
+                match = self.player_match_data[idx]
+                player_hero = get_hero_name(match['hero_id'])
+                print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
+            print(f"The game started {time_ago_string} and lasted {game_duration} minutes. Link: <https://www.stratz.com/matches"
+                  f"/{match_generic['match_id']}>")
+        else:
+            player = self.players[0]
+            match = self.player_match_data[0]
+
+            game_mode_string = GAME_MODES.get(str(match['game_mode']), "Unknown Mode")
+            result_string = 'WON' if check_victory(match) else 'LOST'
+            time_played = datetime.fromtimestamp(match['start_time'])
+            minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
+            player_hero = get_hero_name(match['hero_id'])
+            game_duration = match['duration'] / 60
+            time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
+                                                                                                            datetime.now())
+
+            print(f"------------------------------------------\n"
+                  f"Wonderful **{player.nick}** played a {game_mode_string} game **solo** and **{result_string}**.")
+            print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
+            print(f"The game started {time_ago_string}  and lasted {game_duration} minutes. Link: <https://www.stratz.com/matches/{match['match_id']}>")
+        return listing_string
