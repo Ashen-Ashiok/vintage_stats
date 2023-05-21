@@ -227,8 +227,7 @@ def request_match_parse(match_id):
         parse_requested_dict[match_id] += 1
     else:
         parse_requested_dict[match_id] = 1
-    logging.info(f"Sorted requested dict:")
-    pprint(parse_requested_dict)
+    logging.info(f"Sorted requested dict: {pformat(parse_requested_dict)}")
 
     with requested_set_file_path.open(mode="wb") as requested_file:
         pickle.dump(parse_requested_dict, requested_file)
@@ -657,7 +656,7 @@ class MatchListing:
                 match = self.player_match_data[idx]
                 player_hero = get_hero_name(match['hero_id'])
                 print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
-            print(f"The game started {time_ago_string} and lasted {game_duration} minutes. Link: <https://www.stratz.com/matches"
+            print(f"The game started {time_ago_string} and lasted {game_duration:.0f} minutes. Link: <https://www.stratz.com/matches"
                   f"/{match_generic['match_id']}>")
         else:
             player = self.players[0]
@@ -675,5 +674,5 @@ class MatchListing:
             print(f"------------------------------------------\n"
                   f"Wonderful **{player.nick}** played a {game_mode_string} game **solo** and **{result_string}**.")
             print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
-            print(f"The game started {time_ago_string}  and lasted {game_duration} minutes. Link: <https://www.stratz.com/matches/{match['match_id']}>")
+            print(f"The game started {time_ago_string} and lasted {game_duration:.0f} minutes. Link: <https://www.stratz.com/matches/{match['match_id']}>")
         return listing_string
