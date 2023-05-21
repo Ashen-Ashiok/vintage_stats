@@ -643,29 +643,39 @@ class MatchListing:
 
             match_generic = player_match_data[0]
             player_string = f"{get_random_positive_phrase(True)} "
-            player_string += f", {get_random_positive_phrase(False)} ".join([player.nick for player in players_involved[:-1]])
+            player_string += f", {get_random_positive_phrase(False)} ".join([f"**{player.nick}**" for player in players_involved[:-1]])
             player_string += f" and {get_random_positive_phrase(False)} {players_involved[1].nick}"
             game_mode_string = GAME_MODES.get(str(match_generic['game_mode']), "Unknown Mode")
+
+            ownage_total = 0.0
+            for match in player_match_data:
+                ownage_total += (match['kills'] + match['assists'])/match['deaths']
+            ownage_rating = ownage_total / len(players_involved)
+
             result_string = 'WON' if check_victory(match_generic) else 'LOST'
+            if result_string == 'WON' and ownage_rating > 4.0:
+                result_string = 'TOTALLY OWNED'
             time_played = datetime.fromtimestamp(match_generic['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
             game_duration = int(match_generic['duration']/60)
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
                                                                                                             datetime.now())
             print(f"------------------------------------------\n"
-                  f"**{player_string}** played a {game_mode_string} game **together** and **{result_string}**.")
+                  f"{player_string} played a {game_mode_string} game **together** and **{result_string}**.")
             for idx, player in enumerate(self.players):
                 match = self.player_match_data[idx]
                 player_hero = get_hero_name(match['hero_id'])
                 print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
-            print(f"The game started {time_ago_string} and lasted {game_duration:.0f} minutes. Link: <https://www.stratz.com/matches"
-                  f"/{match_generic['match_id']}>")
+            print(f"The game started {time_ago_string} and lasted {game_duration:.0f} minutes."
+                  f"\nLink: <https://www.stratz.com/matches/{match_generic['match_id']}>")
         else:
             player = self.players[0]
             match = self.player_match_data[0]
-
+            ownage_rating = (match['kills'] + match['assists'])/match['deaths']
             game_mode_string = GAME_MODES.get(str(match['game_mode']), "Unknown Mode")
             result_string = 'WON' if check_victory(match) else 'LOST'
+            if result_string == 'WON' and ownage_rating > 4.0:
+                result_string = 'TOTALLY OWNED'
             time_played = datetime.fromtimestamp(match['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
             player_hero = get_hero_name(match['hero_id'])
