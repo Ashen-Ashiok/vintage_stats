@@ -2,6 +2,7 @@ import json
 import logging
 import filecmp
 import os
+import random
 import time
 import pickle
 from pathlib import Path
@@ -641,8 +642,9 @@ class MatchListing:
             player_match_data = self.player_match_data
 
             match_generic = player_match_data[0]
-            player_string = ", ".join([player.nick for player in players_involved[:-1]])
-            player_string += f" and {players_involved[1]}"
+            player_string = f"{get_random_positive_phrase(True)} "
+            player_string += f", {get_random_positive_phrase(False)} ".join([player.nick for player in players_involved[:-1]])
+            player_string += f" and {get_random_positive_phrase(False)} {players_involved[1].nick}"
             game_mode_string = GAME_MODES.get(str(match_generic['game_mode']), "Unknown Mode")
             result_string = 'WON' if check_victory(match_generic) else 'LOST'
             time_played = datetime.fromtimestamp(match_generic['start_time'])
@@ -651,7 +653,7 @@ class MatchListing:
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
                                                                                                             datetime.now())
             print(f"------------------------------------------\n"
-                  f"Amazing players **{player_string}** played a {game_mode_string} game **together** and **{result_string}**.")
+                  f"**{player_string}** played a {game_mode_string} game **together** and **{result_string}**.")
             for idx, player in enumerate(self.players):
                 match = self.player_match_data[idx]
                 player_hero = get_hero_name(match['hero_id'])
@@ -672,7 +674,24 @@ class MatchListing:
                                                                                                             datetime.now())
 
             print(f"------------------------------------------\n"
-                  f"Wonderful **{player.nick}** played a {game_mode_string} game **solo** and **{result_string}**.")
+                  f"{get_random_positive_phrase(True)} **{player.nick}** played a {game_mode_string} game **solo** and *"
+                  f"*{result_string}**.")
             print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
             print(f"The game started {time_ago_string} and lasted {game_duration:.0f} minutes. Link: <https://www.stratz.com/matches/{match['match_id']}>")
         return listing_string
+
+
+def get_random_positive_phrase(capitalize=False):
+    random.seed()
+    phrase_list = ["admirable", "amazing", "astonishing", "attractive", "awesome", "beautiful", "breathtaking", "brilliant", "cool",
+                   "dazzling", "delightful", "elite", "epic", "esteemed", "excellent", "exceptional", "fabulous", "fearless", "fearsome",
+                   "formidable", "glorious", "godlike", "gorgeous", "handsome", "illustrious", "imba", "incredible", "ingenious",
+                   "inspiring", "leet", "magnificent", "marvelous", "mind-blowing", "miraculous", "ninja", "number one", "outstanding",
+                   "overpowered", "pro gamer", "remarkable", "robot", "spectacular", "superb", "terrific", "too fucking good", "top-notch",
+                   "totally radical", "very clutch", "wonderful", "wondrous"]
+    phrase = random.choice(phrase_list)
+    if capitalize:
+        return phrase.capitalize()
+
+    return phrase
+
