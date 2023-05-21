@@ -4,10 +4,9 @@ import filecmp
 import os
 import time
 import pickle
-from collections import namedtuple
 from pathlib import Path
 from datetime import datetime, timedelta
-from pprint import pformat
+from pprint import pformat, pprint
 
 import requests
 import timeago
@@ -209,35 +208,34 @@ def get_stack_wl(players_list, exclusive=False, excluded_players=None, _cutoff_d
 def request_match_parse(match_id):
     logging.info(f"\trequest_match_parse function for {match_id}")
     requested_set_file_path = Path("parse_requested.pickle")
-    parse_requested_set = set()
+    parse_requested_dict = {}
 
     if requested_set_file_path.exists():
         logging.info("\trequest_match_parse pickle file exists")
-        with requested_set_file_path.open(mode="rb") as requested_set_file:
-            parse_requested_set = pickle.load(requested_set_file)
+        with requested_set_file_path.open(mode="rb") as requested_file:
+            parse_requested_dict = pickle.load(requested_file)
             logging.info("\trequest_match_parse pickle file loaded")
 
-    if match_id in parse_requested_set:
-        logging.info("\trequest_match_parse match was already requested")
+    if match_id in parse_requested_dict and parse_requested_dict[match_id] > 2:
+        logging.info("\trequest_match_parse match was already requested 3 times.")
         return None
 
     response_str = f'https://api.opendota.com/api/request/{match_id}'
     response = CacheHandler.opendota_request_post(response_str)
 
-    parse_requested_set.add(match_id)
-    logging.info(f"Sorted requested set: {pformat(sorted(parse_requested_set))}")
+    if match_id in parse_requested_dict:
+        parse_requested_dict[match_id] += 1
+    else:
+        parse_requested_dict[match_id] = 1
+    logging.info(f"Sorted requested dict:")
+    pprint(parse_requested_dict)
 
-    with requested_set_file_path.open(mode="wb") as requested_set_file:
-        pickle.dump(parse_requested_set, requested_set_file)
+    with requested_set_file_path.open(mode="wb") as requested_file:
+        pickle.dump(parse_requested_dict, requested_file)
         logging.info("\trequest_match_parse saved to pickle file")
 
-    request_log_path = Path("parse_requested.log")
-    if not request_log_path.exists():
-        with open('parse_requested.log', 'w'):
-            pass
-    with open('parse_requested.log', 'a') as parse_log:
-        if response:
-            parse_log.write(f'\nRequest: {response_str}\nResponse: {response.json()}')
+    if response:
+        logging.info(f"Parse request for match_id {match_id} response: {pformat(response.json())}")
     return response
 
 
@@ -245,7 +243,6 @@ def get_last_matches_map(players_list, days_threshold=7):
     last_matches_map = {}
     last_matches_map_file_path = Path("lastmatches.json")
     last_matches_map_file_path_temp = Path("lastmatches_new.json")
-    last_matches_map_file_path_debug = Path("debug")
 
     is_initial_run = False
     if last_matches_map_file_path.exists():
@@ -651,7 +648,7 @@ class MatchListing:
             result_string = 'WON' if check_victory(match_generic) else 'LOST'
             time_played = datetime.fromtimestamp(match_generic['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
-            game_duration = match_generic['duration']/60
+            game_duration = int(match_generic['duration']/60)
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
                                                                                                             datetime.now())
             print(f"------------------------------------------\n"
@@ -671,7 +668,7 @@ class MatchListing:
             time_played = datetime.fromtimestamp(match['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
             player_hero = get_hero_name(match['hero_id'])
-            game_duration = match['duration'] / 60
+            game_duration = int(match['duration'] / 60)
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
                                                                                                             datetime.now())
 

@@ -1,15 +1,13 @@
 import argparse
-import json
 import logging
-import time
+
 from datetime import datetime, timedelta
-from pathlib import Path
-from pprint import pformat
+
 
 import timeago
 
 import vintage_stats.player
-from vintage_stats.constants import SAUCE_ID, FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, SHOTTY_ID, TIARIN_ID, \
+from vintage_stats.constants import FAZY_ID, GRUMPY_ID, GWEN_ID, KESKOO_ID, SHIFTY_ID, SHOTTY_ID, TIARIN_ID, \
     WARELIC_ID, GAME_MODES
 from vintage_stats.data_processing import get_stack_wl, get_last_matches_map, log_requests_count, \
     format_and_print_winrate_report, request_match_parse, get_mmr_history_table, get_player_match_history, CacheHandler, \
@@ -25,6 +23,9 @@ parser = argparse.ArgumentParser(description='TODO VINTAGE STATS DESC',
 
 parser.add_argument("-m", "--monitor", action="store_true")
 
+parser.add_argument("-w", "--simple_last_week", action="store_true")
+
+# region unused
 parser.add_argument("--HCT", help="How many best/worst heroes to show in hero report. Default is 3.", default='3',
                     type=int)
 parser.add_argument("--HT", help="Threshold for a very played hero. Default is 2.", default='2', type=int)
@@ -38,7 +39,7 @@ parser.add_argument("-monrep", "--since-monday-report", help="Print this week (s
                     action="store_true")
 parser.add_argument("-report", "--custom-report", help="Print a custom report for Vintage", action="store_true")
 parser.add_argument("-stacks", "--stack-reports", help="Print all duo and trio stack reports", action="store_true")
-parser.add_argument("-w", "--simple_last_week", action="store_true")
+# endregion unused
 
 args = parser.parse_args()
 # endregion args
@@ -54,25 +55,15 @@ vintage_player_map = [
     {'pid': WARELIC_ID, 'nick': 'Warelic'},
 ]
 
-vintage_smaller_map = [
-    {'pid': FAZY_ID, 'nick': 'Fazy'},
-    {'pid': GWEN_ID, 'nick': 'Gwen'},
-    {'pid': KESKOO_ID, 'nick': 'Keskoo'},
-    {'pid': SHIFTY_ID, 'nick': 'Shifty'},
-    {'pid': WARELIC_ID, 'nick': 'Warelic'},
-]
-
 vintage = vintage_stats.player.PlayerPool(vintage_player_map)
-vintage_small = vintage_stats.player.PlayerPool(vintage_smaller_map)
 logging.basicConfig()
 logging.getLogger().setLevel(logging.INFO)
 
 
 def main():
     if args.monitor:
-        matches_to_post = []
         match_id_to_match_listing = {}
-        for player in vintage_small:
+        for player in vintage:
             # region get recent matches
             logging.info(f"\n-----------------------------------------------------------------------\n"
                          f"Getting recentMatches for player"
