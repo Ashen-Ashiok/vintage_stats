@@ -642,9 +642,10 @@ class MatchListing:
             player_match_data = self.player_match_data
 
             match_generic = player_match_data[0]
-            player_string = f"{get_random_positive_phrase(True)} "
-            player_string += f", {get_random_positive_phrase(False)} ".join([f"**{player.nick}**" for player in players_involved[:-1]])
-            player_string += f" and {get_random_positive_phrase(False)} {players_involved[1].nick}"
+            player_string = f"{get_random_positive_phrase(0.7).capitalize()}"
+            player_string += f", {get_random_positive_phrase(0.7)}".join([f"**{player.nick}**" for player in players_involved[:-1]])
+            player_string += f" and {get_random_positive_phrase(0.7)}{players_involved[1].nick}"
+            player_string.capitalize()
             game_mode_string = GAME_MODES.get(str(match_generic['game_mode']), "Unknown Mode")
 
             ownage_total = 0.0
@@ -682,17 +683,19 @@ class MatchListing:
             game_duration = int(match['duration'] / 60)
             time_ago_string = '{} minutes ago'.format(minutes_ago) if minutes_ago < 120 else timeago.format(time_played,
                                                                                                             datetime.now())
-
             print(f"------------------------------------------\n"
-                  f"{get_random_positive_phrase(True)} **{player.nick}** played a {game_mode_string} game **solo** and *"
+                  f"{get_random_positive_phrase().capitalize()}**{player.nick}** played a {game_mode_string} game **solo** and *"
                   f"*{result_string}**.")
             print(f"**{player.nick}** played **{player_hero}** and went **{match['kills']}-{match['deaths']}-{match['assists']}**.")
             print(f"The game started {time_ago_string} and lasted {game_duration:.0f} minutes. Link: <https://www.stratz.com/matches/{match['match_id']}>")
         return listing_string
 
 
-def get_random_positive_phrase(capitalize=False):
+def get_random_positive_phrase(chance=0.55):
     random.seed()
+    if random.random() > chance:
+        return ""
+
     phrase_list = ["admirable", "amazing", "astonishing", "attractive", "awesome", "beautiful", "breathtaking", "brilliant", "cool",
                    "dazzling", "delightful", "elite", "epic", "esteemed", "excellent", "exceptional", "fabulous", "fearless", "fearsome",
                    "formidable", "glorious", "godlike", "gorgeous", "handsome", "illustrious", "imba", "incredible", "ingenious",
@@ -700,8 +703,7 @@ def get_random_positive_phrase(capitalize=False):
                    "overpowered", "pro gamer", "remarkable", "robot", "spectacular", "superb", "terrific", "too fucking good", "top-notch",
                    "totally radical", "very clutch", "wonderful", "wondrous"]
     phrase = random.choice(phrase_list)
-    if capitalize:
-        return phrase.capitalize()
+    phrase += " "
 
     return phrase
 
