@@ -644,7 +644,7 @@ class MatchListing:
             match_generic = player_match_data[0]
             player_string = f"{get_random_positive_phrase(0.7).capitalize()}"
             player_string += f", {get_random_positive_phrase(0.7)}".join([f"**{player.nick}**" for player in players_involved[:-1]])
-            player_string += f" and {get_random_positive_phrase(0.7)}{players_involved[-1].nick}"
+            player_string += f" and {get_random_positive_phrase(0.7)}**{players_involved[-1].nick}**"
             player_string.capitalize()
             game_mode_string = GAME_MODES.get(str(match_generic['game_mode']), "Unknown Mode")
 
