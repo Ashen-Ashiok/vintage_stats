@@ -650,16 +650,16 @@ class MatchListing:
 
             ownage_total = 0.0
             for match in player_match_data:
-                ownage_total += (match['kills'] + match['assists'])/(match['deaths'] or 0.25)
+                ownage_total += (match['kills'] + match['assists'])/(match['deaths'] or 0.5)
             ownage_rating = ownage_total / len(players_involved)
 
             result_string = 'WON' if check_victory(match_generic) else 'LOST'
             logging.info(f"ownage_rating: {ownage_rating}")
             if check_victory(match_generic):
                 result_string = 'WON'
-                if ownage_rating >= 5.0:
+                if 5.0 <= ownage_rating < 7.5:
                     result_string = 'OWNED'
-                elif ownage_rating >= 7.5:
+                elif 7.5 <= ownage_rating < 10.0:
                     result_string = 'TOTALLY OWNED'
                 elif ownage_rating >= 10:
                     result_string = 'ABSOLUTELY STOMPED'
