@@ -650,12 +650,18 @@ class MatchListing:
 
             ownage_total = 0.0
             for match in player_match_data:
-                ownage_total += (match['kills'] + match['assists'])/match['deaths']
+                ownage_total += (match['kills'] + match['assists'])/(match['deaths'] or 0.5)
             ownage_rating = ownage_total / len(players_involved)
 
             result_string = 'WON' if check_victory(match_generic) else 'LOST'
-            if result_string == 'WON' and ownage_rating > 4.0:
-                result_string = 'TOTALLY OWNED'
+            if check_victory(match_generic):
+                result_string = 'WON'
+                if ownage_rating >= 5.0:
+                    result_string = 'OWNED'
+                elif ownage_rating >= 7.5:
+                    result_string = 'TOTALLY OWNED'
+                elif ownage_rating >= 10:
+                    result_string = 'ABSOLUTELY STOMPED'
             time_played = datetime.fromtimestamp(match_generic['start_time'])
             minutes_ago = int((datetime.now() - time_played).total_seconds() / 60)
             game_duration = int(match_generic['duration']/60)
@@ -691,7 +697,7 @@ class MatchListing:
         return listing_string
 
 
-def get_random_positive_phrase(chance=0.55):
+def get_random_positive_phrase(chance=0.50):
     random.seed()
     if random.random() > chance:
         return ""
@@ -701,7 +707,10 @@ def get_random_positive_phrase(chance=0.55):
                    "formidable", "glorious", "godlike", "gorgeous", "handsome", "illustrious", "imba", "incredible", "ingenious",
                    "inspiring", "leet", "magnificent", "marvelous", "mind-blowing", "miraculous", "ninja", "number one", "outstanding",
                    "overpowered", "pro gamer", "remarkable", "robot", "spectacular", "superb", "terrific", "too fucking good", "top-notch",
-                   "totally radical", "very clutch", "wonderful", "wondrous"]
+                   "totally radical", "very clutch", "wonderful", "wondrous", "exquisite", "dashing", "majestic", "sublime", "captivating",
+                   "phenomenal", "unbelievable", "unbeatable", "supreme", "masterful", "astounding", "unrivaled", "impressive",
+                   "awe-inspiring", "extraordinary", "unparalleled", "thrilling", "perfect player", "striking", "peerless", "unprecedented",
+                   "legendary", "sensational", "absolute god", "madly skilled", "slayer", "insane"]
     phrase = random.choice(phrase_list)
     phrase += " "
 
