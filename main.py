@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from tabulate import tabulate
 from datetime import datetime, timedelta
 
 
@@ -10,7 +11,6 @@ import vintage_stats.player
 from vintage_stats.constants import (
     FAZY_ID,
     KESKOO_ID,
-    KESKOO_OLD_ID,
     SHIFTY_ID,
     TIARIN_ID,
     WARELIC_ID,
@@ -102,7 +102,7 @@ vintage_player_map = [
     {"pid": FAZY_ID, "nick": "Fazy"},
     # {'pid': GRUMPY_ID, 'nick': 'Grumpy'},
     {"pid": KESKOO_ID, "nick": "Keskoo"},
-    {"pid": KESKOO_OLD_ID, "nick": "Keskoo"},
+    # {"pid": KESKOO_OLD_ID, "nick": "Keskoo"},
     {"pid": SHIFTY_ID, "nick": "Shifty"},
     {"pid": TIARIN_ID, "nick": "Tiarin"},
     {"pid": WARELIC_ID, "nick": "Warelic"},
@@ -313,10 +313,28 @@ def main():
             _cutoff_date_to=date_to,
         )
 
+        rows = []
         for stack in all_duo_stacks_report + all_triple_stacks_report:
-            print(
-                f"{stack['stack_name']}\t{stack['stack_record'].wins}\t{stack['stack_record'].losses}"
+            rows.append(
+                [
+                    stack["stack_name"],
+                    stack["stack_record"].wins,
+                    stack["stack_record"].losses,
+                ]
             )
+
+        print(
+            tabulate(
+                rows,
+                headers=["STACK", "WINS", "LOSSES"],
+                tablefmt="plain",
+                colalign=(
+                    "left",
+                    "right",
+                    "right",
+                ),  # This ensures wins/losses are right-aligned for clarity
+            )
+        )
 
     if args.activity_report:
         date_from = datetime.fromisoformat("2019-01-03")
