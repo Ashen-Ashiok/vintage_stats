@@ -20,7 +20,7 @@ class WLRecord:
             self.losses = self.losses + 1
 
     def __str__(self):
-        return '{}–{}'.format(self.wins, self.losses)
+        return "{}–{}".format(self.wins, self.losses)
 
     def get_count(self):
         return self.losses + self.wins
@@ -46,7 +46,11 @@ def get_days_since_date(date):
 def get_last_monday():
     """Used for reports that are cut off by a start of a week"""
     time_now = datetime.now()
-    last_monday = time_now - timedelta(days=time_now.weekday()) - timedelta(hours=time_now.hour,
-                                                                            minutes=time_now.minute,
-                                                                            seconds=time_now.second)
+    last_monday = (
+        time_now
+        - timedelta(days=time_now.weekday())
+        - timedelta(
+            hours=time_now.hour, minutes=time_now.minute, seconds=time_now.second
+        )
+    )
     return last_monday
